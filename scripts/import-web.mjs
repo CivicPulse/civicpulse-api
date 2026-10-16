@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
+import { normalizeReviewedPrivateEvents } from './private-events.mjs';
 import { applyReviewedGeometryRepair } from './geometry-repairs.mjs';
 import { createCivicPulseClient } from '../src/client.mjs';
 
@@ -40,7 +41,7 @@ export async function readWebData(root, { rawGeometry = false } = {}) {
   }));
   return [...catalog.organizations.map(payload=>({kind:'organization',payload})),
     ...catalog.calendars.map(payload=>({kind:'calendar',payload})),
-    ...mergeEvents(catalog,sources).map(payload=>({kind:'event',payload})),
+    ...normalizeReviewedPrivateEvents(mergeEvents(catalog,sources), await readFile(join(root,'src/data/mobilize-events.json'))).map(payload=>({kind:'event',payload})),
     ...layerRecords.map(payload=>({kind:'layer',payload})),
     ...maps.map(payload=>({kind:'map',payload}))];
 }

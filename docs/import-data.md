@@ -95,3 +95,37 @@ events, layers → maps. A repaired elementary layer must publish before
 `school-elementary`. Publish only the exact reviewed revision. Public-site
 activation and refresh behavior must be coordinated with Web-Dev; see the
 [handoff](web-integration-handoff.md#publication-reaching-resident-facing-pages).
+
+## Private-event derived normalization (local privacy checkpoint)
+
+`scripts/private-events.mjs` normalizes only the reviewed Mobilize snapshot,
+SHA-256 `bc7f96e0faff7b3bf69058a3ef5d8826ea8ba71141bc874f8075af6b38d5c740`.
+The 81 approved occurrence IDs and transformation metadata are recorded in
+`data/import-repairs/private-events.json`. Both `address` and `location` become
+exactly `Private location — see organizer for details`; only ADR allowlisted
+fields survive (`sourceCity` is removed). IDs and other allowed values remain
+unchanged. Coordinates must already be absent/null; unexpected coordinates or
+an unreviewed source hash/ID stop import. No event provenance object is added.
+
+Original bytes remain in web `src/data/mobilize-events.json`; captured supporting
+evidence remains in web `data/sources/mobilize-bibb/`. This importer never writes
+those files. These raw inputs are evidence, not public downloads/build artifacts;
+only normalized validated records may enter public output. Repository storage is
+not itself access control: review evidence access before introducing real private
+details. API stores only hash/IDs/transformation metadata in the repair manifest.
+
+The additive privacy migration rejects unsafe publication with SQLSTATE `22023`,
+without silently changing the saved reviewed payload. Staff drafts/history may
+retain original details. Unknown keys (even null), nested values, wrong boolean
+or string types, non-null coordinates and noncanonical placeholders are rejected.
+Private events create no GeoJSON features. Public prose and source links remain
+editorial responsibility, not automatic PII detection.
+
+URL checks currently accept HTTP(S) ASCII hostnames or bracketed IPv6 with valid
+ports, and reject userinfo, whitespace, controls, backslashes and encoded authority.
+Exact URL-edge-case alignment with Web-Dev remains a review item; no browser/client
+signature changes are introduced. Privacy SQL regressions pass in a disposable
+PostGIS database, alongside security and publication tests. The 81-record adapter
+check passes. A full 935-record rerun currently cannot load the moving web catalog:
+`education-transit.ts` reads Astro `import.meta.env` under plain tsx. The earlier
+935-record audit predates this privacy change; do not represent it as revalidated.
