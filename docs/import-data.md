@@ -126,6 +126,28 @@ ports, and reject userinfo, whitespace, controls, backslashes and encoded author
 Exact URL-edge-case alignment with Web-Dev remains a review item; no browser/client
 signature changes are introduced. Privacy SQL regressions pass in a disposable
 PostGIS database, alongside security and publication tests. The 81-record adapter
-check passes. A full 935-record rerun currently cannot load the moving web catalog:
-`education-transit.ts` reads Astro `import.meta.env` under plain tsx. The earlier
-935-record audit predates this privacy change; do not represent it as revalidated.
+check passes. The plain-tsx adapter blocker was resolved by Web-Dev; the fresh
+full-source audit below includes this privacy change.
+
+### Reproducible privacy import audit — 2026-10-16
+
+- API tested commit: `7ad292b8dca96d4dc5abbe16b9a7cc08d251beb1` (clean).
+- Web source commit: `b41f9cc539972d4f3f3bae2fc851060ac3e4d0c5`.
+- Runtime: Node `v26.11.1`, pinned tsx `4.23.15`; disposable local PostGIS
+  container `civicpulse-api-db-test`, with no network.
+- Command from API checkout: `npm run test:db -- --web-data`.
+- Result: exit 0, **935 imported and published**, **zero source issues**;
+  permission/publication/PostGIS, generation/outbox/manifest and private-event
+  rejection SQL markers all passed. The harness drops its test database afterward.
+
+The web checkout had unrelated UI/documentation/test edits; `git diff HEAD --
+src/data public/data src/lib/content-source.mjs` was empty, covering the importer
+source data, map catalog dependencies and source-selector helper. The plain-Node
+adapter selects local source when Astro import metadata is absent; no hosted
+content is fetched. For reproduction, use these two exact commits in sibling
+checkouts and the pinned API dependencies, with the disposable container running.
+This is a fresh observed result, not reuse of the pre-privacy 935-record audit.
+
+This checkpoint does not close shared URL edge-case parity/actual-publish corpus,
+hostile web snapshot validation, machine grants, leases/fences or production
+rollout review. No production content was written.
