@@ -36,6 +36,8 @@ export function createCivicPulseClient({ url, publishableKey, accessToken, fetch
   }
   return {
     role: () => call('rpc/cms_role', {}),
+    publicationStatus: () => call('rpc/cms_publication_status', {}),
+    recordPublicationStatus: (kind, id) => call('rpc/cms_record_publication_status', { p_kind: kind, p_id: id }),
     publicationManifest: () => call('rpc/publication_manifest', {}),
     listPublished: (kind, page) => list('content', kind, page),
     listDrafts: (kind, page) => list('cms_drafts', kind, page),

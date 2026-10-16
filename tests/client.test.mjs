@@ -58,3 +58,15 @@ test('manifest uses exact additive RPC and bypasses fetch caches',async()=>{
   }});
   assert.deepEqual(await client.publicationManifest(),manifest);
 });
+
+test('staff status methods use authenticated POST RPCs and exact tuple body',async()=>{
+  const calls=[];
+  const client=createCivicPulseClient({url:'https://example.org',publishableKey:'key',accessToken:()=> 'staff-token',fetch:async(url,options)=>{
+    calls.push([url.pathname,JSON.parse(options.body)]);
+    assert.equal(options.method,'POST');assert.equal(options.cache,'no-store');
+    assert.equal(options.headers.Authorization,'Bearer staff-token');
+    return new Response('{}');
+  }});
+  await client.publicationStatus(); await client.recordPublicationStatus('event','source-id');
+  assert.deepEqual(calls,[['/rest/v1/rpc/cms_publication_status',{}],['/rest/v1/rpc/cms_record_publication_status',{p_kind:'event',p_id:'source-id'}]]);
+});
