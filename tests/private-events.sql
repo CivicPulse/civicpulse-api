@@ -1,11 +1,24 @@
 begin;
+do $$ begin
+  begin
+    perform ('{"sourceUrl":"https://example.org/' || chr(92) || 'u0000"}')::jsonb;
+    raise exception 'Unexpected NUL JSON representation';
+  exception when sqlstate '22P05' then null; end;
+end $$;
 insert into auth.users(id) values ('00000000-0000-4000-8000-000000000021'),('00000000-0000-4000-8000-000000000022');
 insert into civicpulse.members(user_id,role) values ('00000000-0000-4000-8000-000000000021','admin');
 create function pg_temp.assert(ok boolean,message text) returns void language plpgsql as $$
 begin if ok is distinct from true then raise exception 'FAIL: %',message; end if; end $$;
+-- Test-only owner observer: delivery tables remain inaccessible to browser roles.
+create function pg_temp.publication_effects() returns jsonb language sql security definer set search_path='' as $$
+  select jsonb_build_object('outbox',(select count(*) from civicpulse_delivery.outbox),
+    'public_history',(select count(*) from civicpulse.history where action in ('publish','withdraw')),
+    'features',(select count(*) from civicpulse.features));
+$$;
 create function pg_temp.reject_private(doc jsonb) returns void language plpgsql as $$
-declare version bigint; before_manifest jsonb; previous_payload jsonb;
+declare version bigint; before_manifest jsonb; previous_payload jsonb; before_effects jsonb;
 begin
+  before_effects:=pg_temp.publication_effects();
   before_manifest:=public.publication_manifest();
   select payload into previous_payload from public.content where kind='event' and id='private-test';
   select revision into version from public.cms_drafts where kind='event' and id='private-test';
@@ -16,6 +29,7 @@ begin
   exception when sqlstate '22023' then
     if sqlerrm like '%SENTINEL%' then raise exception 'Private value leaked in error'; end if;
   end;
+  perform pg_temp.assert(pg_temp.publication_effects()=before_effects,'failed private publish preserves outbox, public history and features');
   perform pg_temp.assert(public.publication_manifest()=before_manifest,'failed private publish preserves manifest');
   perform pg_temp.assert((select payload from public.content where kind='event' and id='private-test') is not distinct from previous_payload,'failed private publish preserves public payload');
 end $$;
@@ -54,6 +68,7 @@ begin
   foreach unsafe in array array['https://user:SENTINEL@example.org/','https://','https:///missing','javascript:alert(1)','https://example.org:99999/','https://example.org/SENTINEL secret',E'https://example.org/\nSENTINEL',E'https://example.org/\tSENTINEL',E'https://example.org/\\SENTINEL'] loop
     perform pg_temp.reject_private(base||jsonb_build_object('sourceUrl',unsafe));
   end loop;
+  -- SHARED_URL_PUBLISH_CORPUS
   select revision into version from public.cms_drafts where kind='event' and id='private-test';
   version:=public.save_draft('event','private-test',base||'{"coordinates":null,"isVirtual":true,"description":"Editors deliberately publish this public prose."}',version);
   perform public.publish('event','private-test',version);
@@ -73,20 +88,6 @@ select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000022'
 select pg_temp.assert((select count(*)=0 from public.cms_drafts),'nonstaff cannot read private drafts');
 select pg_temp.assert((select count(*)=0 from public.cms_history),'nonstaff cannot read private history');
 reset role;
--- Shared Web/API URL corpus, testing the publication helper directly as owner.
-do $$
-declare url text; doc jsonb := '{"addressPrivate":true,"address":"Private location — see organizer for details","location":"Private location — see organizer for details"}';
-begin
-  foreach url in array array['https://example.test/events/1','http://example.test:8080/a?b=c','https://[2001:db8::1]:65535/path','http://example.test:0/','https://[::1]:0/'] loop
-    perform civicpulse.validate_private_event(doc||jsonb_build_object('sourceUrl',url));
-  end loop;
-  foreach url in array array['/event','javascript:alert(1)','ftp://example.test/x','https://user:pass@example.test/x',E'https://example.test/a\\b','https://example.test/a b',E'https://example.test/\n','https://%65xample.test/x','https://éxample.test/x','https://example.test:65536/x','https://[2001:db8:::1]/','https://[2001:db8::1/path','https:///'] loop
-    begin
-      perform civicpulse.validate_private_event(doc||jsonb_build_object('sourceUrl',url));
-      raise exception 'Unexpected shared URL acceptance';
-    exception when sqlstate '22023' then null; end;
-  end loop;
-end $$;
 set local role anon;
 select pg_temp.assert((select payload::text not like '%SENTINEL%' from public.content where kind='event' and id='private-test'),'anonymous raw payload has no sentinel');
 select pg_temp.assert(jsonb_array_length(public.layer_geojson('event-locations')->'features')=0,'anonymous GeoJSON has no private event');

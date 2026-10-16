@@ -121,10 +121,24 @@ or string types, non-null coordinates and noncanonical placeholders are rejected
 Private events create no GeoJSON features. Public prose and source links remain
 editorial responsibility, not automatic PII detection.
 
-URL checks currently accept HTTP(S) ASCII hostnames or bracketed IPv6 with valid
-ports, and reject userinfo, whitespace, controls, backslashes and encoded authority.
-Exact URL-edge-case alignment with Web-Dev remains a review item; no browser/client
-signature changes are introduced. Privacy SQL regressions pass in a disposable
+URL publication checks now implement the parent [ADR 0003](../../docs/adr/0003-source-url-compatibility.md)
+`cp-source-url-v1` grammar: exact lowercase HTTP(S), canonical IPv4 or constrained
+lowercase DNS, canonical ports 1–65535, and an explicit ASCII tail/percent grammar.
+IPv6, IDN, localhost, trailing dots, padded/empty/zero ports, controls and encoded
+controls/backslashes are intentionally rejected. Original accepted bytes remain
+unchanged. This scope applies only to private events; no client/RPC signature changes.
+
+The exact shared corpus is `tests/fixtures/cp-source-url-v1.json`: 18 accepts and
+79 rejects; SHA-256 of UTF-8 `JSON.stringify({policy,accept,reject})` is
+`9e10592c001a367cbafb9d30c6e723d4d8b36221e72fe6895cf46f00a53aecb4`.
+The disposable harness runs 18 accepted and 78 representable rejected cases through
+actual `save_draft`/`publish`, plus two accepted/two rejected generated length
+boundaries and the missing-field case. Rejections require `22023`, unchanged
+public payload/manifest, outbox, publication history and features. Accepted public
+URLs retain exact bytes. The remaining raw-NUL case rejects at JSONB input with
+`22P05`, before validator execution. The previous IPv6/port-zero helper-only corpus
+is superseded. Web serialization parity requires Web-Dev's separate fixture commit
+and independent Security review. Privacy SQL regressions pass in a disposable
 PostGIS database, alongside security and publication tests. The 81-record adapter
 check passes. The plain-tsx adapter blocker was resolved by Web-Dev; the fresh
 full-source audit below includes this privacy change.

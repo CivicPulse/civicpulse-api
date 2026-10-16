@@ -8,6 +8,22 @@ function command(args, input) {
   if (result.status !== 0) throw new Error(result.stderr || result.stdout);
   return result.stdout;
 }
+const urlCorpus = JSON.parse(readFileSync('tests/fixtures/cp-source-url-v1.json','utf8'));
+urlCorpus.accept.push('https://'+'a'.repeat(63)+'.test/', 'https://'+['a'.repeat(63),'b'.repeat(63),'c'.repeat(63),'d'.repeat(61)].join('.')+'/');
+urlCorpus.reject.push('https://'+'a'.repeat(64)+'.test/', 'https://'+['a'.repeat(63),'b'.repeat(63),'c'.repeat(63),'d'.repeat(62)].join('.')+'/');
+const sqlJson = value => "'"+JSON.stringify(value).replaceAll("'", "''")+"'::jsonb";
+const urlCasesSql = `
+  for value in select item from jsonb_array_elements(${sqlJson(urlCorpus.accept)}) item loop
+    select revision into version from public.cms_drafts where kind='event' and id='private-test';
+    version:=public.save_draft('event','private-test',base||jsonb_build_object('sourceUrl',value),version);
+    begin perform public.publish('event','private-test',version); exception when others then raise exception 'Accepted synthetic URL rejected: %',value; end;
+    perform pg_temp.assert((select payload->'sourceUrl'=value from public.content where kind='event' and id='private-test'),'accepted URL original bytes preserved');
+  end loop;
+  for value in select item from jsonb_array_elements(${sqlJson(urlCorpus.reject.filter(v=>typeof v!=='string'||!v.includes('\u0000')))}) item loop
+    perform pg_temp.reject_private(base||jsonb_build_object('sourceUrl',value));
+  end loop;
+  perform pg_temp.reject_private(base-'sourceUrl');
+`;
 const database = `civicpulse_test_${Date.now()}`;
 command(['exec',container,'createdb','-U','postgres','--template=template0',database]);
 try {
@@ -17,7 +33,7 @@ try {
     (_,name) => `do $$ begin create role ${name} nologin; exception when duplicate_object then null; end $$;`
   );
   let sql = [bootstrap,...readdirSync('supabase/migrations').filter(f=>f.endsWith('.sql')).sort()
-    .map(f=>readFileSync(`supabase/migrations/${f}`,'utf8')),...['security.sql','publication.sql','private-events.sql'].map(file=>readFileSync(`tests/${file}`,'utf8'))].join('\n');
+    .map(f=>readFileSync(`supabase/migrations/${f}`,'utf8')),...['security.sql','publication.sql','private-events.sql'].map(file=>readFileSync(`tests/${file}`,'utf8').replace('-- SHARED_URL_PUBLISH_CORPUS',()=>urlCasesSql))].join('\n');
   if (process.argv.includes('--web-data')) {
     const records = await readWebData(new URL('../../civicpulse-web/', import.meta.url).pathname, { rawGeometry: process.argv.includes('--raw-geometry') });
     const literal = value => "'" + String(value).replaceAll("'", "''") + "'";
