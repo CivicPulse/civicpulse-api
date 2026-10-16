@@ -1,0 +1,21 @@
+{
+  "name": "civicpulse-source-tooling-local",
+  "version": "0.0.0-local",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22.12" },
+  "exports": {
+    "./run-facts-v2": {
+      "types": "./src/server/github-run-facts-v2.d.mts",
+      "import": "./src/server/github-run-facts-v2.mjs"
+    },
+    "./workflow-path-v2": {
+      "types": "./src/server/github-workflow-path-v2.d.mts",
+      "import": "./src/server/github-workflow-path-v2.mjs"
+    }
+  },
+  "scripts": {
+    "test": "node --test tests/github-run-identity.test.mjs tests/github-workflow-path-v2.test.mjs tests/github-run-facts-v2.test.mjs tests/bundle-consumption.test.mjs"
+  },
+  "dependencies": { "lossless-json": "4.3.2" }
+}
