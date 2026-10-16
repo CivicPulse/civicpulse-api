@@ -10,7 +10,7 @@ const command = (args, input) => {
   return result.stdout;
 };
 const migrations = ['20261016195541_civicpulse_content_api.sql', '20261016195619_restrict_platform_trigger_execution.sql',
-  '20261016204146_private_event_publication_validation.sql', '20261016210355_private_event_source_url_v1.sql'];
+  '20261016231409_private_event_publication_validation.sql', '20261016231420_private_event_source_url_v1.sql'];
 const guards = migrations.slice(2).map(name => read('supabase/migrations/' + name)).join('\n');
 const bootstrap = read('tests/bootstrap.sql').replace(/create role (\w+) nologin;/g,
   (_, name) => `do $$ begin create role ${name} nologin; exception when duplicate_object then null; end $$;`);

@@ -1,5 +1,7 @@
 # Existing-target admin MVP: bounded hosted plan
 
+**Application completed under explicit Lead instruction; postchecks below.** The original pre-application evidence and approved plan are preserved here. Only the two specified guards were applied. Content/Auth/browser QA is a separate next step.
+
 2026-10-16. User accepts existing unused site/project for synthetic testing. This plan is prepared for Security/Lead clearance; it does not itself authorize hosted migrations or content writes. No separate backend, automated delivery pipeline or 935-record import is required.
 
 ## Read-only hosted evidence
@@ -42,3 +44,18 @@ Immediately after hosted application: list migrations, verify exactly two additi
 After guard postchecks and coordinated authorization, the user signs into `/admin` with existing account privately. Verify role admin, page reload/session refresh/logout, then use one run-specific namespace (UUID) with exact three planned keys: organization, calendar, event. Precheck each(kind,id) absent in drafts and published content; stop on collision. Record every successful returned draft/public revision. Create/publish organization then calendar; event uses clearly synthetic public text, example.org provenance, explicit timezone, canonical private placeholders, no coordinates and sample=false because v1 intentionally rejects sample=true. No real/private addresses or mass import. Save a deliberately invalid synthetic private draft and verify publication rejects22023 while the previous public revision stays unchanged; save/review sanitized content again. Exercise stale-revision40001 without automatic overwrite. Role-denial coverage remains local unless a separate editor/nonstaff test identity is explicitly authorized; do not change the existing admin membership.
 
 If withdrawing QA artifacts is authorized, withdraw only exact created published revisions in event→calendar→organization order after confirming ownership ledger and current revision; collision/concurrent change stops cleanup. No delete RPC exists: withdraw retains draft/history. Retaining clearly labeled synthetic drafts/history is the default proposed outcome. No broad-prefix delete, destructive cleanup or user/data reset is authorized. Resident refresh remains disabled and is a separate milestone from successful API publication.
+
+## Completed hosted application and postchecks
+
+Security independently cleared frozen plan/harness `f415c0646d3cddcd008665d541918a18068b7b7e`; Lead then explicitly instructed these two connected migrations only. Both `supabase_apply_migration` calls on `drzcrodqflzkzzbqsags` returned `{success:true}` after their respective catalog/history/hash prechecks. Stored history has one statement per migration:
+
+| Original version | Hosted/reconciled version | Stored bytes | Stored SHA256 |
+| --- | --- | --- | --- |
+| `20261016204146` | `20261016231409` | 4514 | `e0724ebcf95c054eb8dea07b906eeef62fd5b0c0f7ddb04e66f6cb065290c7e3` |
+| `20261016210355` | `20261016231420` | 4979 | `4befbfb36f802839b5c42e94e80c08165a4a8b62c066604a7377e2a116485ac0` |
+
+Database `encode(sha256(convert_to(array_to_string(statements,E'\n'),'UTF8')),'hex')` exactly matches each approved local file hash. History is original base→trigger restriction→private guard→URL guard, with exactly four entries. Rename-only commit `4a9a4c5` reconciles local filenames (100% identical SQL). Subset harness now follows the reconciled names. Delivery migrations remain local/unapplied; do not use blanket push or infer their approval from local filename order.
+
+API postchecks: all four helpers/validators postgres-owned, INVOKER, empty search_path, no PUBLIC/anon/authenticated EXECUTE. Original public RPC argument signatures/invoker ACLs and internal definer write boundaries unchanged. All six internal tables retain RLS and authenticated direct-write denial; three public views retain security_invoker and staff-view anon denial. Public/draft counts remain0; one unchanged confirmed/password-set admin, no ban/deletion. Delivery schema and manifest remain absent. Advisor returns only the preexisting leaked-password-protection warning. Security independently repeated hosted catalog/history/hash/count checks and reported no confirmed regression.
+
+Anonymous HTTP using only the browser publishable key, no user token: `/rest/v1/content?select=kind,id&limit=1` returned200 with0 rows; draft/history reads and `/rest/v1/rpc/cms_role` returned401/code42501. No write RPC was invoked by these postchecks. No content, Auth setting, identity/member or site deployment change occurred in this application phase. Real authenticated browser/session and synthetic write QA remain pending coordination.

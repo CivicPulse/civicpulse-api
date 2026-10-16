@@ -1,5 +1,7 @@
 # Verification — 2026-10-16
 
+Latest hosted update: only the two reviewed private-address/URL guards were additionally applied as `20261016231409` and `20261016231420`; exact bytes, history mapping and independent Security postchecks are in [admin MVP hosted evidence](admin-mvp-hosted-plan.md#completed-hosted-application-and-postchecks). Draft/public counts remain zero. Original two-migration evidence below is historical; generation/delivery migrations remain unapplied.
+
 ## Deployed
 
 Project `drzcrodqflzkzzbqsags` (CivicPulse), PostgreSQL 17:
