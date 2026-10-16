@@ -73,6 +73,20 @@ select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000022'
 select pg_temp.assert((select count(*)=0 from public.cms_drafts),'nonstaff cannot read private drafts');
 select pg_temp.assert((select count(*)=0 from public.cms_history),'nonstaff cannot read private history');
 reset role;
+-- Shared Web/API URL corpus, testing the publication helper directly as owner.
+do $$
+declare url text; doc jsonb := '{"addressPrivate":true,"address":"Private location — see organizer for details","location":"Private location — see organizer for details"}';
+begin
+  foreach url in array array['https://example.test/events/1','http://example.test:8080/a?b=c','https://[2001:db8::1]:65535/path','http://example.test:0/','https://[::1]:0/'] loop
+    perform civicpulse.validate_private_event(doc||jsonb_build_object('sourceUrl',url));
+  end loop;
+  foreach url in array array['/event','javascript:alert(1)','ftp://example.test/x','https://user:pass@example.test/x',E'https://example.test/a\\b','https://example.test/a b',E'https://example.test/\n','https://%65xample.test/x','https://éxample.test/x','https://example.test:65536/x','https://[2001:db8:::1]/','https://[2001:db8::1/path','https:///'] loop
+    begin
+      perform civicpulse.validate_private_event(doc||jsonb_build_object('sourceUrl',url));
+      raise exception 'Unexpected shared URL acceptance';
+    exception when sqlstate '22023' then null; end;
+  end loop;
+end $$;
 set local role anon;
 select pg_temp.assert((select payload::text not like '%SENTINEL%' from public.content where kind='event' and id='private-test'),'anonymous raw payload has no sentinel');
 select pg_temp.assert(jsonb_array_length(public.layer_geojson('event-locations')->'features')=0,'anonymous GeoJSON has no private event');
