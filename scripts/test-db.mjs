@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { readFileSync, readdirSync } from 'node:fs';
 import { readWebData } from './import-web.mjs';
+import { testDispatchConcurrency } from './test-dispatch-concurrency.mjs';
 const container = process.env.CIVICPULSE_TEST_CONTAINER || 'civicpulse-api-db-test';
 function command(args, input) {
   const result = spawnSync('podman', args, { input, encoding: 'utf8' });
@@ -33,7 +34,7 @@ try {
     (_,name) => `do $$ begin create role ${name} nologin; exception when duplicate_object then null; end $$;`
   );
   let sql = [bootstrap,...readdirSync('supabase/migrations').filter(f=>f.endsWith('.sql')).sort()
-    .map(f=>readFileSync(`supabase/migrations/${f}`,'utf8')),...['security.sql','publication.sql','private-events.sql','delivery-status.sql'].map(file=>readFileSync(`tests/${file}`,'utf8').replace('-- SHARED_URL_PUBLISH_CORPUS',()=>urlCasesSql))].join('\n');
+    .map(f=>readFileSync(`supabase/migrations/${f}`,'utf8')),...['security.sql','publication.sql','private-events.sql','delivery-status.sql','dispatch.sql'].map(file=>readFileSync(`tests/${file}`,'utf8').replace('-- SHARED_URL_PUBLISH_CORPUS',()=>urlCasesSql))].join('\n');
   if (process.argv.includes('--web-data')) {
     const records = await readWebData(new URL('../../civicpulse-web/', import.meta.url).pathname, { rawGeometry: process.argv.includes('--raw-geometry') });
     const literal = value => "'" + String(value).replaceAll("'", "''") + "'";
@@ -49,6 +50,7 @@ try {
   }
   const output = command(['exec','-i',container,'psql','-q','-X','-U','postgres','-d',database,'-v','ON_ERROR_STOP=1'],sql);
   console.log(output.slice(-4000));
+  await testDispatchConcurrency(command, container, database);
 } finally {
   command(['exec',container,'dropdb','-U','postgres',database]);
 }

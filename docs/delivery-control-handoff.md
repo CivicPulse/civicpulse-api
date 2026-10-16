@@ -84,9 +84,62 @@ accidental EXECUTE grant, inherited-role impersonation, revoked EXECUTE, mismatc
 OID, actual dropped/recreated role name, disabled/expired/deleted registrations.
 No real login or credentials persist: fixture roles are rolled back.
 
-**Unimplemented:** dispatch/build claims, job storage/transitions, leases/fences,
+**At the M2b foundation checkpoint, unimplemented:** dispatch/build claims, job storage/transitions, leases/fences,
 begin/finish deploy, reconciliation/provider attestations, retry scheduling,
 bootstrap approval, epoch reset/baseline approval, source-only release authority,
 all-empty approval and resume. No deployment route exists to bypass those gates.
 Follow-up increments require their own real-role/concurrency/transition tests and
-independent Security review. This foundation cannot make a website update live.
+independent Security review. This foundation cannot make a website update live. The subsequent dispatch-only
+increment below changes only its dispatch coverage.
+
+## Local dispatch lease/ack increment
+
+Implements only the accepted run/dispatch portion of parent
+[delivery gate precision](../../docs/architecture-delivery-gates.md).
+`civicpulse_delivery.claim_dispatch(p_worker_id text,p_limit integer)` returns a
+JSON receipt array, or `[]`. `finish_dispatch(p_event_id uuid,p_dispatch_lease_id
+uuid,p_outcome text,p_run_id text,p_error_code text)` returns
+`{accepted:boolean,next_attempt_at:timestamp|null}`. These are private SQL/session
+interfaces, not browser RPCs; there is no browser client/vendor update for them.
+
+Both functions are definer functions with empty search_path and explicit machine
+checks, including after lock acquisition. PUBLIC/anon/authenticated execution is
+revoked. No real machine receives a grant. Future dispatcher provisioning alone
+may grant these two fixed functions and schema USAGE/CONNECT; runner/reconciler/
+operator capabilities cannot use them, even with an accidental function grant.
+Internal run-parser and retry-time helpers have no external grants.
+
+Claims require valid dispatcher name/OID/registry/expiry plus unpaused,
+bootstrapped, approved current epoch. Current public/operator interfaces cannot
+establish those gates: tests seed them as owner only. Claims serialize on the
+catalog lock, select current-epoch events in generation order, enforce batch
+1–100 and canonical worker syntax, and create two-minute DB-clock leases bound
+to caller name/OID/token. Worker labels are not identities. Dispatch does not
+coalesce or mutate generation/live state; build debounce remains future work.
+
+Accepted acknowledgements permit null run correlation; otherwise require positive
+canonical decimal `run_id:attempt` text (20/10-digit limits), never JS Number.
+Accepted error is null. Retry errors are dispatch_timeout, dispatch_unavailable,
+dispatch_rate_limited; permanent errors are dispatch_unauthorized,
+dispatch_invalid_request, dispatch_configuration. `lease_expired` is internal.
+No raw provider response is stored. Exact acknowledgement replays return the saved
+result without new jitter or mutation, only for the same still-authorized identity
+and unreplaced token. Changed/expired-first/stale/other-owner acknowledgements
+fail `40001`; malformed inputs `22023`; unauthorized registry/ACL `42501`.
+
+Retries persist 30/120/600/3600-second bases plus 0–20% positive jitter. Each
+expired attempt is counted once. Fifth failed/expired attempt or any permanent
+failure records dispatch_state failed with no next automatic attempt (intervention
+required). Durable event/publication intent remains. No automatic recovery or
+operator retry method exists yet. A future adapter must honor longer Retry-After
+without adding an unreviewed RPC parameter. No GitHub HTTP calls occur here.
+
+Validation: `npm run test:db` includes actual-role dispatch SQL plus two concurrent
+PostgreSQL backends using distinct session identities. It checks unique leasing,
+transaction rollback, empty work, gates, capability separation, malformed values,
+null/large run correlation, saved-result replay, revoked/recreated callers,
+changed/replaced leases, expiry, persisted jitter and fifth/permanent failure.
+The concurrency harness isolates owner-created fixture state in the disposable
+DB, then drops all fixture roles; no credentials are created. No claim_build,
+heartbeat/transition, begin/finish_deploy, source admission, verified-live writer,
+bootstrap/reset/baseline or all-empty approval is added by this increment.
