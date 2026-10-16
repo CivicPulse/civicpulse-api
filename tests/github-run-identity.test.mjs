@@ -95,10 +95,26 @@ test('token budget bounds large arrays and many unknown members',()=>{
   invalid(()=>decode(raw({extra:',"unknown":{'+Array.from({length:limits.tokens},(_,i)=>`"k${i}":0`).join(',')+'}'})));
 });
 
-test('valid 32767-token object passes and 32769-token object fails',()=>{
+test('valid 32767/32768-token objects pass and 32769-token object fails',()=>{
+  // Independent structural count of these synthetic SAFE-number fixtures only.
+  // This native parse is never used by the lossless production decoder.
+  const tokenCount=value=>{
+    if (Array.isArray(value)) return 2+Math.max(0,value.length-1)+value.reduce((sum,item)=>sum+tokenCount(item),0);
+    if (value!==null && typeof value==='object') {
+      const values=Object.values(value);
+      return 2+Math.max(0,values.length-1)+values.reduce((sum,item)=>sum+2+tokenCount(item),0);
+    }
+    return 1;
+  };
   // Base has 33 tokens; additional unknown array contributes 4 + 2*N.
   const body=n=>raw({extra:',"unknown":['+Array(n).fill('0').join(',')+']'});
+  assert.equal(tokenCount(JSON.parse(body(16365))),32767);
   assert.deepEqual(decode(body(16365)),decode(raw()));
+  // Replace one primitive token with two array delimiters: exactly 32768.
+  const atLimit=raw({extra:',"unknown":['+['[]',...Array(16364).fill('0')].join(',')+']'});
+  assert.equal(tokenCount(JSON.parse(atLimit)),32768);
+  assert.deepEqual(decode(atLimit),decode(raw()));
+  assert.equal(tokenCount(JSON.parse(body(16366))),32769);
   invalid(()=>decode(body(16366)));
 });
 test('exact UTF8 and raw escaped string boundaries include keys and surrogate code units',()=>{
