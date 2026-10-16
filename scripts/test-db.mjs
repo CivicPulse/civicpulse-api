@@ -17,7 +17,7 @@ try {
     (_,name) => `do $$ begin create role ${name} nologin; exception when duplicate_object then null; end $$;`
   );
   let sql = [bootstrap,...readdirSync('supabase/migrations').filter(f=>f.endsWith('.sql')).sort()
-    .map(f=>readFileSync(`supabase/migrations/${f}`,'utf8')),readFileSync('tests/security.sql','utf8')].join('\n');
+    .map(f=>readFileSync(`supabase/migrations/${f}`,'utf8')),...['security.sql','publication.sql'].map(file=>readFileSync(`tests/${file}`,'utf8'))].join('\n');
   if (process.argv.includes('--web-data')) {
     const records = await readWebData(new URL('../../civicpulse-web/', import.meta.url).pathname, { rawGeometry: process.argv.includes('--raw-geometry') });
     const literal = value => "'" + String(value).replaceAll("'", "''") + "'";

@@ -17,7 +17,7 @@ export function createCivicPulseClient({ url, publishableKey, accessToken, fetch
     if (token) headers.Authorization = `Bearer ${token}`;
     if (body !== undefined) headers['Content-Type'] = 'application/json';
     const response = await request(new URL(path, base), {
-      method: body === undefined ? 'GET' : 'POST', headers,
+      method: body === undefined ? 'GET' : 'POST', headers, cache: 'no-store',
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     });
     const text = await response.text();
@@ -36,6 +36,7 @@ export function createCivicPulseClient({ url, publishableKey, accessToken, fetch
   }
   return {
     role: () => call('rpc/cms_role', {}),
+    publicationManifest: () => call('rpc/publication_manifest', {}),
     listPublished: (kind, page) => list('content', kind, page),
     listDrafts: (kind, page) => list('cms_drafts', kind, page),
     async getDraft(kind, id) {

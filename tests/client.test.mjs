@@ -48,3 +48,13 @@ test('re-running import preserves edited drafts and skips identical records',asy
   assert.deepEqual(report,{created:1,unchanged:1,conflicts:['organization/changed']});
   assert.equal(calls.length,1);assert.equal(calls[0][2],0);
 });
+
+test('manifest uses exact additive RPC and bypasses fetch caches',async()=>{
+  const manifest={schema_version:1,dataset_epoch:'epoch',generation:'9007199254740993',bootstrap_complete:false,counts:{organization:0,calendar:0,event:0,layer:0,map:0},records:[],layers:[]};
+  const client=createCivicPulseClient({url:'https://example.org',publishableKey:'key',fetch:async(url,options)=>{
+    assert.equal(url.pathname,'/rest/v1/rpc/publication_manifest');
+    assert.equal(options.method,'POST');assert.equal(options.body,'{}');assert.equal(options.cache,'no-store');
+    return new Response(JSON.stringify(manifest));
+  }});
+  assert.deepEqual(await client.publicationManifest(),manifest);
+});

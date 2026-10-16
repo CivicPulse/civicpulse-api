@@ -103,6 +103,8 @@ export type Database = {
       }
     }
     Functions: {
+      // Local additive migration; not deployed to hosted Supabase yet.
+      publication_manifest: { Args: never; Returns: Json }
       cms_role: { Args: never; Returns: string }
       layer_geojson: {
         Args: {
