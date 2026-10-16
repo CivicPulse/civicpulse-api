@@ -205,3 +205,10 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Node and Supabase local state
+node_modules/
+.env.*
+!.env.example
+supabase/.temp/
+supabase/.branches/

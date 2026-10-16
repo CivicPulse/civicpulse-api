@@ -1,0 +1,19 @@
+{
+  "name": "civicpulse-api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.6"
+  },
+  "scripts": {
+    "supabase": "supabase",
+    "test": "node --test tests/*.test.mjs",
+    "test:db": "node --import tsx scripts/test-db.mjs",
+    "import:web": "tsx scripts/import-web.mjs"
+  },
+  "devDependencies": {
+    "supabase": "2.121.0",
+    "tsx": "4.23.15"
+  }
+}
