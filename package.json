@@ -15,5 +15,8 @@
   "devDependencies": {
     "supabase": "2.121.0",
     "tsx": "4.23.15"
+  },
+  "dependencies": {
+    "lossless-json": "4.3.2"
   }
 }
