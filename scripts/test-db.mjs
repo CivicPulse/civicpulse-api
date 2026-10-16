@@ -19,7 +19,7 @@ try {
   let sql = [bootstrap,...readdirSync('supabase/migrations').filter(f=>f.endsWith('.sql')).sort()
     .map(f=>readFileSync(`supabase/migrations/${f}`,'utf8')),readFileSync('tests/security.sql','utf8')].join('\n');
   if (process.argv.includes('--web-data')) {
-    const records = await readWebData(new URL('../../civicpulse-web/', import.meta.url).pathname);
+    const records = await readWebData(new URL('../../civicpulse-web/', import.meta.url).pathname, { rawGeometry: process.argv.includes('--raw-geometry') });
     const literal = value => "'" + String(value).replaceAll("'", "''") + "'";
     sql += `\ncreate temporary table source_issues(document text, problem text); grant insert on source_issues to authenticated;\ninsert into auth.users values ('00000000-0000-4000-8000-000000000001');\ninsert into civicpulse.members(user_id,role) values ('00000000-0000-4000-8000-000000000001','admin');\nset role authenticated;\nselect set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000001',false);\n`;
     for (const {kind,payload} of records) {
@@ -29,6 +29,7 @@ try {
       sql += `do ${delimiter}${body}${delimiter};\n`;
     }
     sql += `reset role; select count(*) as imported_and_published from public.content; select * from source_issues order by document;`;
+    if (!process.argv.includes('--raw-geometry')) sql += `do $$ begin if exists(select 1 from source_issues) then raise exception 'Derived import still has publication blockers'; end if; end $$;`;
   }
   const output = command(['exec','-i',container,'psql','-q','-X','-U','postgres','-d',database,'-v','ON_ERROR_STOP=1'],sql);
   console.log(output.slice(-4000));

@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
+import { applyReviewedGeometryRepair } from './geometry-repairs.mjs';
 import { createCivicPulseClient } from '../src/client.mjs';
 
 // Match civicpulse-web/src/lib/events.ts: refreshed Mobilize records supersede
@@ -25,7 +26,7 @@ export function mergeEvents(catalog, sources) {
     return { ...item, organizationId, calendarIds };
   }).sort((a,b) => a.start.localeCompare(b.start));
 }
-export async function readWebData(root) {
+export async function readWebData(root, { rawGeometry = false } = {}) {
   const json = async file => JSON.parse(await readFile(join(root,file),'utf8'));
   const catalog = await json('src/data/calendars.json');
   const sources = await Promise.all(['events','mobilize-events','mgdsa-events','mgrls-events','bcsd-events'].map(name => json(`src/data/${name}.json`)));
@@ -34,7 +35,8 @@ export async function readWebData(root) {
   const layerRecords = await Promise.all(layers.map(async layer => {
     if (layer.id === 'event-locations') return { ...layer, dynamic: 'events' };
     const filename = ({ 'commission-districts':'commission_districts', 'polling-places':'polling_places', 'voting-precincts':'voting_precincts' })[layer.id] || layer.id;
-    return { ...layer, geojson: await json(`public/data/${filename}.geojson`) };
+    const bytes = await readFile(join(root, `public/data/${filename}.geojson`));
+    return { ...layer, ...(rawGeometry ? { geojson: JSON.parse(bytes) } : applyReviewedGeometryRepair(layer.id, bytes)) };
   }));
   return [...catalog.organizations.map(payload=>({kind:'organization',payload})),
     ...catalog.calendars.map(payload=>({kind:'calendar',payload})),
@@ -59,18 +61,18 @@ export async function importDrafts(client, records) {
 async function main() {
   const args = process.argv.slice(2);
   if (args.includes('--help')) {
-    console.log('npm run import:web -- [--web-root ../civicpulse-web] [--apply]\nDefaults to a read-only inventory. --apply creates missing drafts only; never publishes or overwrites.');
+    console.log('npm run import:web -- [--web-root ../civicpulse-web] [--raw-geometry] [--apply]\nDefaults to a read-only inventory. --apply creates missing drafts only; never publishes or overwrites.');
     return;
   }
   for (let i=0;i<args.length;i++) {
     if (args[i]==='--web-root') { if (!args[++i] || args[i].startsWith('--')) throw new Error('--web-root needs a path'); }
-    else if (args[i]!=='--apply') throw new Error(`Unknown option: ${args[i]}`);
+    else if (!['--apply','--raw-geometry'].includes(args[i])) throw new Error(`Unknown option: ${args[i]}`);
   }
   const index = args.indexOf('--web-root');
   const root = resolve(index < 0 ? '../civicpulse-web' : args[index+1]);
-  const records = await readWebData(root);
+  const records = await readWebData(root, { rawGeometry: args.includes('--raw-geometry') });
   const counts = Object.fromEntries(['organization','calendar','event','layer','map'].map(kind=>[kind,records.filter(r=>r.kind===kind).length]));
-  console.log(JSON.stringify({mode:args.includes('--apply')?'create-drafts':'dry-run',root,counts},null,2));
+  console.log(JSON.stringify({mode:args.includes('--apply')?'create-drafts':'dry-run',root,counts,geometry:args.includes('--raw-geometry')?'original':'reviewed-hash-gated-repairs'},null,2));
   if (!args.includes('--apply')) return;
   const { SUPABASE_URL:url, SUPABASE_PUBLISHABLE_KEY:publishableKey, CIVICPULSE_ACCESS_TOKEN:accessToken } = process.env;
   if (!accessToken) throw new Error('CIVICPULSE_ACCESS_TOKEN must be an invited staff user access token');

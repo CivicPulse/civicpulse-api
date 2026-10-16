@@ -1,0 +1,2 @@
+# Only needed to regenerate or independently verify the committed repair artifact.
+shapely==2.1.2
