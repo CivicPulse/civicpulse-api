@@ -143,3 +143,45 @@ The concurrency harness isolates owner-created fixture state in the disposable
 DB, then drops all fixture roles; no credentials are created. No claim_build,
 heartbeat/transition, begin/finish_deploy, source admission, verified-live writer,
 bootstrap/reset/baseline or all-empty approval is added by this increment.
+
+## Pure receipt-manifest structure helper
+
+Private `civicpulse_delivery.validate_receipt_manifest(p_manifest jsonb,
+p_expected_epoch uuid,p_expected_generation bigint) RETURNS void` implements the
+exact assigned schema in [delivery gate precision](../../docs/architecture-delivery-gates.md).
+It is IMMUTABLE, SECURITY INVOKER, empty search_path, has no state reads/writes and
+no external EXECUTE grant (including machine/operator roles). Local migration
+owner is postgres. It is not called by a public endpoint or any receipt writer.
+All validation failures, including supplied-context mismatch, use `22023`.
+
+Checks cover exact M2a top/nested keys, schema numeric 1/bootstrap boolean true,
+canonical lowercase epoch equality, canonical string generation/revisions within
+int8 bounds, five safe nonnegative integral JSON counts, exact cardinalities,
+unique C-ordered kind/ID tuples, and exhaustive matching layer IDs/revisions.
+Layer mode is events iff ID is event-locations, stored otherwise. Feature counts
+must be safe nonnegative integers; zero kinds/layers/features are valid. An
+all-empty inventory is rejected without an approval escape hatch. Arbitrary
+nonempty IDs, including __proto__, whitespace and Unicode, are retained literally.
+
+JSONB numbers such as 1.0 or 1e0 are mathematically integral and accepted; string
+counters never permit those forms. The JSONB parameter boundary already parses
+JSON and does not retain duplicate raw object keys or every numeric spelling;
+this function makes no raw-text-parser claim. Source SHA, deployment/provider
+identity, approval booleans and invented receipt-wrapper fields are not M2a fields
+and are rejected as extras.
+
+A successful void result means **structure plus supplied context only**. It does
+not compare against current authoritative inventory, prove actual feature rows,
+authenticate provenance/provider results, approve an empty release or mark a live
+receipt verified. No source/build/deploy authority or live writer is introduced.
+Those future gates must validate persisted job evidence and authoritative current
+state under their separate reviewed authorization/locking contract.
+
+`tests/receipt-manifest.sql`, run by `npm run test:db`, includes valid zero-kind/
+zero-feature/special-ID/int8-limit/safe-number controls and adversarial missing/
+extra/null/type/schema/counter/count/duplicate/order/layer-mode/context/all-empty
+cases. It asserts no publication/live/outbox changes and catalog owner/immutable/
+invoker/empty-search_path/no-PUBLIC-EXECUTE properties. Actual anon/authenticated
+and four separately registered machine session identities all fail EXECUTE with
+42501 despite schema USAGE. Existing SQL suites and concurrent dispatch checks
+remain part of the disposable run; no real login or credential is created.
