@@ -165,3 +165,16 @@ This is a fresh observed result, not reuse of the pre-privacy 935-record audit.
 This checkpoint does not close shared URL edge-case parity/actual-publish corpus,
 hostile web snapshot validation, machine grants, leases/fences or production
 rollout review. No production content was written.
+
+### Frozen URL-policy / web-consumer rerun — 2026-10-16
+
+Fresh developer verification with API
+`c9f2e915f3df367f0b9351877f8bec4537054054` (clean) and Web
+`bfda792a34d767e1ea28265ef2cf7ad4532bf250`; the web import input paths
+(`src/data`, `public/data`, `src/lib/content-source.mjs`) had no HEAD delta.
+`npm run test:db -- --web-data` exited 0: **935 imported/published**, **zero
+source issues**, and all security, publication/manifest and private-event SQL
+markers passed, including the actual-publication cp-source-url-v1 corpus.
+The disposable database was dropped. This verifies the local API import/publish
+boundary against these web inputs; it does not independently exercise or approve
+web snapshot activation, deployment, machine credentials or hosted migration.
