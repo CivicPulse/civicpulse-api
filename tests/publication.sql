@@ -74,5 +74,17 @@ set local role authenticated;
 select public.publish('organization','inventory-1',1);
 select pg_temp.assert(public.publication_manifest()->>'generation'='9007199254740993','counter survives beyond JS safe integers as decimal text');
 reset role;
+-- Owner-only fixture bootstrap: this does not implement bootstrap approval.
+-- Exercise the real manifest producer against the pure consumer, including
+-- >1000 records, both layer modes and a generation beyond JS safe integers.
+update civicpulse_delivery.publication_state set bootstrap_complete=true;
+do $$
+declare manifest jsonb := public.publication_manifest(); epoch uuid; generation bigint;
+begin
+  select dataset_epoch,s.generation into epoch,generation
+    from civicpulse_delivery.publication_state s where singleton;
+  perform civicpulse_delivery.validate_receipt_manifest(manifest,epoch,generation);
+  perform pg_temp.assert(public.publication_manifest()=manifest,'pure helper leaves real manifest unchanged');
+end $$;
 rollback;
 select 'Publication generation/outbox/manifest checks passed' as result;
