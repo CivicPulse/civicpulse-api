@@ -11,11 +11,12 @@ const root = fileURLToPath(new URL('../', import.meta.url));
 // Deliberately no database URL/container override or hosted environment loading.
 const instance = randomUUID().replaceAll('-', '');
 const container = `civicpulse-delivery-fixture-${instance}`;
-if (process.argv.length !== 3 || process.argv[2] !== '--test-only') { process.stderr.write('Requires --test-only\n'); process.exit(2); }
+const args=process.argv.slice(2);
+if (!((args.length===1&&args[0]==='--test-only')||(args.length===3&&args[0]==='--test-only'&&args[1]==='--source-sha'&&typeof args[2]==='string'&&args[2].length===40&&/^[0-9a-f]{40}$/.test(args[2])))) { process.stderr.write('Usage: --test-only [--source-sha FULL_LOWERCASE_SHA]\n'); process.exit(2); }
 const database = `civicpulse_m2_${instance}`;
 const actor = '00000000-0000-4000-8000-000000000041';
 const key = 'local-m2-fixture-only';
-const runId='9007199254740993:1', sourceSha='f'.repeat(40), baselineId='fixture-deployment';
+const runId='9007199254740993:1', sourceSha=args[2]??'f'.repeat(40), baselineId='fixture-deployment';
 const kinds = ['organization', 'calendar', 'event', 'layer', 'map'];
 const ids = { organization: 'm1-organization', calendar: 'm1-calendar', event: 'm1-withdraw-event', privateEvent: 'm1-private-event', layer: 'm1-withdraw-layer', derived: 'event-locations', map: 'm1-withdraw-map' };
 const sentinels = { event: 'M1_WITHDRAW_EVENT_7fd91', layer: 'M1_WITHDRAW_LAYER_7fd91', feature: 'M1_WITHDRAW_FEATURE_7fd91', map: 'M1_WITHDRAW_MAP_7fd91' };

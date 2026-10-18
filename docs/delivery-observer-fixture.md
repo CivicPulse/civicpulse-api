@@ -4,14 +4,23 @@ This API-owned external process tests actual migrated PostgreSQL baseline/source
 challenge and receipt functions, operator approval, and runner claim through ready.
 It grants no provider, hosted, upload or verified-live authority. It uses the current
 private signatures in [enrollment/source](enrollment-source-handoff.md) and
-[deployment](delivery-deployment-plan.md); the public v1/M2a interfaces are unchanged.
+[deployment](deployment-control-plan.md); the public v1/M2a interfaces are unchanged.
 
 From a pinned standalone API checkout with locked dependencies and the cached
 `docker.io/postgis/postgis:16-3.5` image:
 
 ```sh
-node scripts/serve-delivery-fixture.mjs --test-only
+node scripts/serve-delivery-fixture.mjs --test-only --source-sha FULL_FROZEN_WEB_SHA
 ```
+
+`--source-sha` accepts exactly one full 40-character lowercase hexadecimal SHA,
+after `--test-only`, before startup. Unknown, repeated, reordered or malformed
+arguments exit 2 before container creation. It is immutable for the process and
+binds source challenge/run/evidence expectations, receipt and claim consistently.
+The enrolled config retains its exact existing fields (it has no source SHA key).
+The external consumer proves the checkout/archive and build source match; the API
+does not read a sibling repo or attest provenance. Omitting the flag uses `f`*40
+for a clearly synthetic non-build SQL fixture only.
 
 The driver creates a random, labelled, network-none container/database, waits for
 the final postgres PID (not the image's temporary initialization server), applies
@@ -41,7 +50,7 @@ Startup emits one ready object:
 {type:"ready",schema_version:1,test_only:true,fixture_id,
  url,publishableKey,config_json,dataset_epoch,manifest,
  expected:{ids,counts,generation:"8",sentinels},
- inputs:{run_id:"9007199254740993:1",source_sha:"f" repeated 40,
+ inputs:{run_id:"9007199254740993:1",source_sha:selected startup SHA,
  baseline:{deployment_id:"fixture-deployment",source_sha,artifact_sha256,served_inventory_sha256}}}
 ```
 
@@ -76,7 +85,7 @@ Transitions: queued->exporting `{}`; exporting->building
 `{publication_manifest,snapshot_sha256}`; building->validating `{artifact_sha256}`;
 validating->ready `{}`. Failure evidence remains the documented exact SQL contract.
 The driver gets the claimed tuple read-only and submits it under actual runner
-session identity. No caller-selected SQL, role, run, source, job or deploy operation.
+session identity. No per-command source override and no caller-selected SQL, role, run, job or deploy operation.
 
 SQL errors include `22023` malformed evidence, `40001` stale/mismatch and `55000`
 closed gate; capability denial remains `42501`. Invalid envelopes/commands use
