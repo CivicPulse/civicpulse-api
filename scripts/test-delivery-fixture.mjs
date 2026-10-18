@@ -8,11 +8,16 @@ import { decodeGitHubSourceResponse, assembleGitHubSourceEvidence } from '../src
 import { createCivicPulseClient } from '../src/client.mjs';
 
 const fixturePath=new URL('./serve-delivery-fixture.mjs',import.meta.url).pathname;
-const selectedSha='97a7fa79ff85e76ea35bf9ba994f1d561a05c90c'; // known frozen Web source; no checkout proof implied
+const selectedSha='153514ca42f7821bed239e198e15156a1a1ab5b4'; // known frozen Web source; no checkout proof implied
+const selectedWorkflow='25eee8bfbea0cfa733ecbb0a14b3f922faecece553e508968e55a7038512bc25'; // SHA256 of committed validate.yml (3927 bytes)
+const selectedArgs=['--test-only','--source-sha',selectedSha,'--workflow-file-sha256',selectedWorkflow];
+for(const suffix of [[],['A'.repeat(64)],['a'.repeat(63)],[selectedWorkflow+'\n'],[selectedWorkflow,'--workflow-file-sha256',selectedWorkflow]]) {
+ const result=spawnSync(process.execPath,[fixturePath,'--test-only','--source-sha',selectedSha,'--workflow-file-sha256',...suffix],{encoding:'utf8',timeout:10000});assert.equal(result.status,2);assert.equal(result.stdout,'');
+}
 for(const invalidArgs of [[],['--test-only','--source-sha',selectedSha+'\n'],['--test-only','--source-sha'],['--test-only','--source-sha','a'.repeat(39)],['--test-only','--source-sha','A'.repeat(40)],['--test-only','--source-sha',selectedSha,'--source-sha',selectedSha],['--test-only','--unknown',selectedSha],['--source-sha',selectedSha,'--test-only']]) {
  const result=spawnSync(process.execPath,[fixturePath,...invalidArgs],{encoding:'utf8',timeout:10000});assert.equal(result.status,2);assert.equal(result.stdout,'');
 }
-const child=spawn(process.execPath,[fixturePath,'--test-only','--source-sha',selectedSha],{stdio:['pipe','pipe','inherit']});
+const child=spawn(process.execPath,[fixturePath,...selectedArgs],{stdio:['pipe','pipe','inherit']});
 const messages=[],waiters=[];
 createInterface({input:child.stdout}).on('line',line=>{const m=JSON.parse(line); const w=waiters.shift(); if(w)w(m);else messages.push(m);});
 const exited=new Promise(resolve=>child.on('exit',resolve));
@@ -29,6 +34,7 @@ try {
   const initial=await ok('inspect'); assert.equal(initial.receipts,0);assert.equal(initial.job,null);
   assert.equal((await send('claim')).code,'55000');
   const config=parse(ready.config_json); const p=config.provider,b=ready.inputs.baseline,s=config.source;
+  assert.equal(s.workflow_path,'.github/workflows/validate.yml');assert.equal(s.workflow_file_sha256,selectedWorkflow);
   const baseline={schema_version:1,project:{id:p.project_id,name:p.project_name,canonical_deployment_id:b.deployment_id,production_branch:'main'},deployment:{id:b.deployment_id,project_id:p.project_id,project_name:p.project_name,environment:'production',stage:'deploy',status:'success',source_sha:b.source_sha,branch:'main'},markers:{deployment:null,production:null,pages:null},artifact:{artifact_sha256:b.artifact_sha256,served_inventory_sha256:b.served_inventory_sha256},github_terminal:null,requests:['project_before','project_after','deployment','marker_deployment','marker_production','marker_pages','artifact_files'].map(endpoint_key=>({endpoint_key,page:1,status:endpoint_key.startsWith('marker_')?404:200,request_id:null}))};
   const bc=await ok('openBaseline'); assert.equal(bc.config_json,ready.config_json);
   // Exact 8MiB JSON text, dominated by escaped backslashes, fits the one-text-field envelope.
@@ -47,7 +53,10 @@ try {
   await ok('approveBaseline',{observation_id:br.observation_id});
   const r={id:ready.inputs.run_id.split(':')[0],run_attempt:'1',workflow_id:s.workflow_id,path:s.workflow_path+'@main',repository_id:s.repository_id,head_repository_id:s.repository_id,event:'workflow_dispatch',head_branch:'main',head_sha:ready.inputs.source_sha,status:'in_progress',conclusion:null,actor_id:'9007199254740995',triggering_actor_id:'9007199254740996',referenced_workflows:[]};
   const source={schema_version:1,repository:{id:s.repository_id,owner_id:s.repository_owner_id,full_name:s.repository_full_name,fork:false,archived:false,default_branch:'main'},workflow:{id:s.workflow_id,path:s.workflow_path,state:'active'},run_before:r,run_attempt:r,run_after:r,ref_before:{ref:s.ref,object_type:'commit',sha:ready.inputs.source_sha},ref_after:{ref:s.ref,object_type:'commit',sha:ready.inputs.source_sha},protection_before:s.protection_bundle,protection_after:s.protection_bundle,workflow_file:{path:s.workflow_path,source_sha:ready.inputs.source_sha,sha256:s.workflow_file_sha256,bytes:123},requests:['repository','workflow','run_before','run_attempt','run_after','ref_before','ref_after','classic_before','classic_after','rulesets_before','rulesets_after','effective_rules_before','effective_rules_after','workflow_file'].map(endpoint_key=>({endpoint_key,page:1,status:200,github_request_id:null}))};
-  const sc=await ok('openSource');assert.equal(sc.source_sha,selectedSha);
+  const sc=await ok('openSource');assert.equal(sc.source_sha,selectedSha);assert.equal(parse(sc.config_json).source.workflow_file_sha256,selectedWorkflow);
+  const wrongWorkflow=parse(stringify(source));wrongWorkflow.workflow_file.sha256='0'.repeat(64);
+  assert.equal((await send('recordSource',{challenge_id:sc.challenge_id,evidence_json:stringify(wrongWorkflow)})).code,'40001');
+  assert.equal((await ok('inspect')).receipts,1);
   const wrong=parse(stringify(source));wrong.run_after.head_sha='0'.repeat(40);
   assert.equal((await send('recordSource',{challenge_id:sc.challenge_id,evidence_json:stringify(wrong)})).code,'40001');
   assert.equal((await ok('inspect')).receipts,1);

@@ -10,13 +10,22 @@ From a pinned standalone API checkout with locked dependencies and the cached
 `docker.io/postgis/postgis:16-3.5` image:
 
 ```sh
-node scripts/serve-delivery-fixture.mjs --test-only --source-sha FULL_FROZEN_WEB_SHA
+node scripts/serve-delivery-fixture.mjs --test-only --source-sha FULL_FROZEN_WEB_SHA --workflow-file-sha256 COMMITTED_WORKFLOW_SHA256
 ```
 
 `--source-sha` accepts exactly one full 40-character lowercase hexadecimal SHA,
 after `--test-only`, before startup. Unknown, repeated, reordered or malformed
 arguments exit 2 before container creation. It is immutable for the process and
 binds source challenge/run/evidence expectations, receipt and claim consistently.
+`--workflow-file-sha256` optionally follows the selected source, accepts exactly
+64 lowercase hexadecimal characters, and binds the existing enrolled workflow
+hash and source evidence checks. The workflow path is fixed to
+`.github/workflows/validate.yml`; it cannot be overridden. Duplicate, malformed,
+missing, reordered or unknown flags reject before container creation. Real build
+consumers must supply both pins and serve the exact committed workflow bytes from
+their independently verified selected archive. No per-command override exists.
+Omitted workflow digest uses synthetic `a`*64 for projection controls only.
+
 The enrolled config retains its exact existing fields (it has no source SHA key).
 The external consumer proves the checkout/archive and build source match; the API
 does not read a sibling repo or attest provenance. Omitting the flag uses `f`*40
@@ -123,8 +132,16 @@ high-precision/underflow JSONB value preservation, replay, seven-record public r
 ready without live authority, and at/over 8MiB escaped text transport. Existing SQL
 role/ACL/concurrency suites remain separate; this harness does not replace them.
 
-Final developer regression: config 179 lexical tokens / 1859 UTF-8 bytes;
-assembled source evidence 668 tokens / 4680 bytes. Both actual receipts were
+Final developer regression: config 179 lexical tokens / 1860 UTF-8 bytes;
+assembled source evidence 668 tokens / 4685 bytes. Both actual receipts were
 consumed (baseline by operator, source by claim), job reached ready, generation
 remained 8, external_authority=false and live_inventory_complete=false. These
 counts describe this synthetic fixture, not production policy coverage.
+
+Selected-byte regression: Web `153514ca42f7821bed239e198e15156a1a1ab5b4`,
+committed `.github/workflows/validate.yml` 3927 bytes, SHA256
+`25eee8bfbea0cfa733ecbb0a14b3f922faecece553e508968e55a7038512bc25`.
+The regression checks config/challenge binding and rejects a mismatched evidence
+hash without recording a receipt, then reaches ready with matching facts. It does
+not acquire provider bytes or build Web; the external consumer owns that proof.
+The server-tooling bundle remains pinned to `83b95c9` unchanged.

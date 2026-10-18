@@ -12,7 +12,12 @@ const root = fileURLToPath(new URL('../', import.meta.url));
 const instance = randomUUID().replaceAll('-', '');
 const container = `civicpulse-delivery-fixture-${instance}`;
 const args=process.argv.slice(2);
-if (!((args.length===1&&args[0]==='--test-only')||(args.length===3&&args[0]==='--test-only'&&args[1]==='--source-sha'&&typeof args[2]==='string'&&args[2].length===40&&/^[0-9a-f]{40}$/.test(args[2])))) { process.stderr.write('Usage: --test-only [--source-sha FULL_LOWERCASE_SHA]\n'); process.exit(2); }
+const selectedSource=args.length===3||args.length===5;
+const validSource=selectedSource&&args[0]==='--test-only'&&args[1]==='--source-sha'&&args[2].length===40&&/^[0-9a-f]{40}$/.test(args[2]);
+const validWorkflow=args.length===3||(args.length===5&&args[3]==='--workflow-file-sha256'&&args[4].length===64&&/^[0-9a-f]{64}$/.test(args[4]));
+if (!((args.length===1&&args[0]==='--test-only')||(validSource&&validWorkflow))) { process.stderr.write('Usage: --test-only [--source-sha FULL_LOWERCASE_SHA [--workflow-file-sha256 LOWERCASE_SHA256]]\n'); process.exit(2); }
+const workflowSha=args[4]??'a'.repeat(64);
+
 const database = `civicpulse_m2_${instance}`;
 const actor = '00000000-0000-4000-8000-000000000041';
 const key = 'local-m2-fixture-only';
@@ -186,7 +191,7 @@ try {
   phase='operator-bootstrap';
   phase='config-definition';
   const policyJson='{"classic":{"required_status_checks":{"strict":true,"contexts":["civicpulse-validate"]},"fixture_number_tokens":[9007199254740993,0.12345678901234567890123456789,1e-400]},"rulesets":[{"id":9007199254740993,"source_type":"Repository","source":"CivicPulse/fixture","enforcement":"disabled","bypass_actors":[]}],"effective_rules":[]}';
-  const configJson=sql(definition('config')+` select jsonb_set(pg_temp.config(),'{source,protection_bundle}',${literal(policyJson)}::jsonb);`);
+  const configJson=sql(definition('config')+` select jsonb_set(jsonb_set(jsonb_set(pg_temp.config(),'{source,protection_bundle}',${literal(policyJson)}::jsonb),'{source,workflow_path}','".github/workflows/validate.yml"'::jsonb),'{source,workflow_file_sha256}',to_jsonb(${literal(workflowSha)}::text));`);
   phase='enroll';
   sql(asMachine('operator',`select civicpulse_delivery.enroll_delivery_config(null,${literal(configJson)}::jsonb,'test-only fixture config');`));
   phase='pre-manifest';
