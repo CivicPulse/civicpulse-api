@@ -29,6 +29,7 @@ select pg_temp.denied($q$select civicpulse_delivery.claim_build('900719925474099
 select pg_temp.denied($q$select civicpulse_delivery.heartbeat_build((pg_temp.ctx('claim')->>'job_id')::uuid,(pg_temp.ctx('claim')->>'lease_id')::uuid,(pg_temp.ctx('claim')->>'fence')::bigint)$q$);
 reset session authorization;
 rollback to revoked_runner;
+-- BUILD_TRANSITIONS_SCENARIO
 savepoint desired_change;
 set session authorization authenticated;
 select public.save_draft('organization','m21-org','{"id":"m21-org","name":"Changed after claim"}',1);

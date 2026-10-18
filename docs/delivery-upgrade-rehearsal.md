@@ -1,11 +1,21 @@
 # M2 preparation: hosted baseline → delivery foundations
 
-2026-10-17. Local rehearsal only; no hosted apply, login provisioning, job/deploy
+2026-10-17. Local rehearsal only; no hosted apply, login provisioning or deployment
 authority. M1 transport handoff is [separate](publication-fixture-handoff.md).
 The original foundation evidence below is retained. The subsequent M2.1 extension
 implements the accepted prospective-bootstrap correction and checked local
 source/baseline receipts; see [the connected handoff](enrollment-source-handoff.md).
 No alternate approval path is implemented.
+
+## M2.2 extension
+
+The current script then applies `20261018013652_delivery_build_claims.sql` and
+`20261018014106_delivery_build_transitions.sql`, with runtime hashes for both.
+The connected real-role scenario now includes receipt-backed claims, heartbeats,
+phase acknowledgments, persistent intervention, terminal replay and actual staff
+status. See [the build handoff](build-control-handoff.md) for exact scope and
+remaining adapter/deployment work. Run this harness separately from `test:db`:
+their disposable test role names are cluster-wide. Final sequential run passed.
 
 ## M2.1 extension
 
@@ -17,7 +27,7 @@ transaction. That test resets only this random disposable DB's synthetic fixture
 rows in dependency order; it does not read/delete hosted QA data. Config,
 bootstrap approval, baseline observation/consumption and source receipts all use
 actual guarded functions/role identities, never owner-seeded authority receipts.
-This extension still excludes future job/deploy/live writers and actual provider
+This M2.1 checkpoint excluded job/deploy/live writers and actual provider
 acquisition; Web adapter integration and independent review are separate evidence.
 
 ## Reproduced upgrade boundary

@@ -1,5 +1,9 @@
 # Local M2.2 claim preparation
 
+Historical preparation checkpoint `5dff551`. The connected transition/failure
+implementation now follows [the M2.2 handoff](build-control-handoff.md); the
+unfinished list below records the scope of this earlier checkpoint.
+
 Depends on frozen M2.1 `b7639f78a766c79d9442815584f1e26f98ace338` and its
 [private wire and trust boundary](enrollment-source-handoff.md). This is a scoped
 claim/heartbeat preparation checkpoint, **not complete M2.2 or a deploy gate**.

@@ -36,7 +36,7 @@ try {
   );
   let sql = [bootstrap,...readdirSync('supabase/migrations').filter(f=>f.endsWith('.sql')).sort()
     .map(f=>readFileSync(`supabase/migrations/${f}`,'utf8')),...['security.sql','publication.sql','private-events.sql','delivery-status.sql','dispatch.sql','receipt-manifest.sql','enrollment-source.sql'].map(file=>readFileSync(`tests/${file}`,'utf8').replace('-- SHARED_URL_PUBLISH_CORPUS',()=>urlCasesSql))].join('\n');
-  sql = sql.replace('-- BUILD_CLAIMS_SCENARIO', () => readFileSync('tests/build-claims.sql','utf8'));
+  sql = sql.replace('-- BUILD_CLAIMS_SCENARIO', () => readFileSync('tests/build-claims.sql','utf8').replace('-- BUILD_TRANSITIONS_SCENARIO', () => readFileSync('tests/build-transitions.sql','utf8')));
   if (process.argv.includes('--web-data')) {
     const records = await readWebData(new URL('../../civicpulse-web/', import.meta.url).pathname, { rawGeometry: process.argv.includes('--raw-geometry') });
     const literal = value => "'" + String(value).replaceAll("'", "''") + "'";

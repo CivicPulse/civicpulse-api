@@ -1,4 +1,5 @@
 /** Private SQL wire only. No browser client, credentials, or origin attestation. */
+import type { PublicationManifest } from '../publication.types.js';
 export type UUID = string;
 export type Decimal = string;
 export type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
@@ -41,6 +42,14 @@ export interface BuildClaim {
   job_id: UUID; lease_id: UUID; fence: Decimal; dataset_epoch: UUID;
   target_generation: Decimal; lease_expires_at: string;
 }
+export type BuildPredeployState = 'queued' | 'exporting' | 'building' | 'validating' | 'ready';
+export type BuildTerminalState = 'failed' | 'superseded';
+/** Stage-specific combinations are enforced by SQL, not this union alone. */
+export type BuildTransitionEvidence = Record<string, never>
+  | { publication_manifest: PublicationManifest; snapshot_sha256: string }
+  | { artifact_sha256: string }
+  | { error_code: 'export_failed' | 'build_failed' | 'validation_failed' }
+  | { reason: 'content_changed' | 'source_changed' | 'epoch_changed' };
 export interface SourceRunEvidence {
   id: Decimal; run_attempt: Decimal; workflow_id: Decimal; path: string;
   repository_id: Decimal; head_repository_id: Decimal; event: 'push' | 'schedule' | 'workflow_dispatch';
