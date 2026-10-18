@@ -137,6 +137,7 @@ select pg_temp.assert(civicpulse_delivery.record_source_observation((pg_temp.ctx
 select pg_temp.denied($q$select civicpulse_delivery.record_source_observation((pg_temp.ctx('source_challenge')->>'challenge_id')::uuid,jsonb_set(pg_temp.source(),'{requests,0,github_request_id}','"changed"'))$q$,'40001');
 select pg_temp.denied('select * from civicpulse_delivery.observations');
 reset session authorization;
+-- BUILD_CLAIMS_SCENARIO
 savepoint config_change;
 set session authorization cp_m21_operator;
 select civicpulse_delivery.set_pipeline_paused(true,'config rotation');
@@ -175,7 +176,7 @@ set session authorization cp_m21_reconciler;
 select pg_temp.denied($q$select civicpulse_delivery.record_source_observation((pg_temp.ctx('source_challenge')->>'challenge_id')::uuid,pg_temp.source())$q$,'40001');
 reset session authorization;
 select pg_temp.assert((select count(*)=2 from civicpulse_delivery.observations),'rejections never add receipts');
-select pg_temp.assert(to_regprocedure('civicpulse_delivery.claim_build(text,text)') is null,'no build authority');
+select pg_temp.assert(to_regprocedure('civicpulse_delivery.begin_deploy(uuid,uuid,bigint,uuid,bigint,text,text,text)') is null,'no deployment authority');
 -- Assert the complete new authority/helper catalog, not only selected wrappers.
 select pg_temp.assert(not exists(
   select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace

@@ -36,6 +36,11 @@ export interface ObservationReceipt {
   received_at: string; expires_at: string; evidence_sha256: string;
 }
 export interface SourceReceipt extends ObservationReceipt { source_sha: string }
+/** Private local claim preparation; no upload permission is implied. */
+export interface BuildClaim {
+  job_id: UUID; lease_id: UUID; fence: Decimal; dataset_epoch: UUID;
+  target_generation: Decimal; lease_expires_at: string;
+}
 export interface SourceRunEvidence {
   id: Decimal; run_attempt: Decimal; workflow_id: Decimal; path: string;
   repository_id: Decimal; head_repository_id: Decimal; event: 'push' | 'schedule' | 'workflow_dispatch';
