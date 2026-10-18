@@ -57,7 +57,7 @@ supersession branch: a caller reason alone released the active claim without
 intervention. The focused correction
 `20261018015030_require_objective_build_supersession.sql` checks objective cause
 under the same catalog lock: content_changed requires the same epoch and a
-different authoritative generation; epoch_changed requires a different epoch.
+strictly greater authoritative generation; epoch_changed requires a different epoch.
 Unchanged reasons40001 cannot release the job. source_changed is deliberately
 unavailable55000 until an exact authenticated changed-source proof gate is
 reviewed; a caller string or fresh same-SHA receipt is never that proof.
@@ -72,6 +72,14 @@ counter, enrollment, receipt and acknowledgment snapshots remain unchanged.
 Positive controls use actual content publication and a labelled disposable
 owner-simulated restore epoch; normal operator reset refuses an active job.
 No hosted application or automatic historical-data repair is included.
+
+Strict-forward follow-up `20261018015330_reject_rewound_content_supersession.sql`
+matches parent precision SHA256
+`2283f59099c0b32be74f86af2a30d9e651c89d45b057e43f7b7ce24fdd2beb23`.
+It rejects a lower same-epoch generation as an anomaly, preserving complete
+job/enrollment/receipt/fence/intervention/acknowledgment snapshots. Equal-generation
+negatives and real newer-publication positives remain. Follow-up SQL SHA256:
+`ae2730d59a0e3e01d4658cecfd383f313b7da57ae2dca82f8a40c93415628cc1`.
 
 All named failures atomically latch persistent intervention and null next retry;
 there is no automatic build retry or clearance RPC. Config rotation, epoch reset,

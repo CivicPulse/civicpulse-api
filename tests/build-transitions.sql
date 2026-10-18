@@ -56,6 +56,32 @@ select pg_temp.assert(pg_temp.ctx('supersession_before')=jsonb_build_object(
   'all false supersession reasons and same-SHA replacement leave every authority field unchanged');
 rollback to supersession_lies;
 
+savepoint rewound_generation;
+update civicpulse_delivery.publication_state set generation=0;
+insert into m21_context values('rewind_before',jsonb_build_object(
+  'jobs',(select jsonb_agg(to_jsonb(j) order by fence) from civicpulse_delivery.build_jobs j),
+  'counter',(select to_jsonb(c) from civicpulse_delivery.build_counter c),
+  'enrollment',(select to_jsonb(e) from civicpulse_delivery.enrollment_state e),
+  'receipts',(select jsonb_agg(to_jsonb(o) order by observation_id) from civicpulse_delivery.observations o),
+  'acks',(select jsonb_agg(to_jsonb(a) order by job_id,sequence) from civicpulse_delivery.build_transitions a)));
+set session authorization cp_m21_runner;
+select pg_temp.denied($q$select pg_temp.phase('queued','superseded','{"reason":"content_changed"}')$q$,'40001');
+select pg_temp.denied($q$select civicpulse_delivery.claim_build('9007199254740993:2',repeat('f',40))$q$,'40001');
+reset session authorization;
+select pg_temp.assert(pg_temp.ctx('rewind_before')=jsonb_build_object(
+  'jobs',(select jsonb_agg(to_jsonb(j) order by fence) from civicpulse_delivery.build_jobs j),
+  'counter',(select to_jsonb(c) from civicpulse_delivery.build_counter c),
+  'enrollment',(select to_jsonb(e) from civicpulse_delivery.enrollment_state e),
+  'receipts',(select jsonb_agg(to_jsonb(o) order by observation_id) from civicpulse_delivery.observations o),
+  'acks',(select jsonb_agg(to_jsonb(a) order by job_id,sequence) from civicpulse_delivery.build_transitions a)),
+  'rewind denial preserves complete job/enrollment/receipt/fence/intervention/ack snapshots');
+select pg_temp.assert((select state='queued' and transition_sequence=0 from civicpulse_delivery.build_jobs where job_id=(pg_temp.ctx('claim')->>'job_id')::uuid)
+  and (select active_job_id=(pg_temp.ctx('claim')->>'job_id')::uuid from civicpulse_delivery.enrollment_state)
+  and (select not intervention_required and fence=1 from civicpulse_delivery.build_counter)
+  and (select consumed_at is null from civicpulse_delivery.observations where observation_id=(pg_temp.ctx('second_source_receipt')->>'observation_id')::uuid),
+  'generation rewind cannot release ownership, consume replacement receipt or mutate fence/intervention');
+rollback to rewound_generation;
+
 -- Simulate an external restore's epoch change only in this disposable owner
 -- fixture. The normal operator reset correctly refuses an active job.
 savepoint restored_epoch;
