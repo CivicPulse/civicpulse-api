@@ -9,19 +9,19 @@ if (process.argv.length !== 4 || !/^[0-9a-f]{40}$/u.test(commit ?? '') || commit
 const repository = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const git = args => execFileSync('git', ['-C', repository, ...args], { maxBuffer: 4 * 1024 * 1024 });
 if (git(['rev-parse', '--verify', commit + '^{commit}']).toString().trim() !== commit) throw new Error('invalid_source_commit');
-const modules = ['github-run-json.mjs', 'github-run-identity.mjs', 'github-run-identity.d.mts', 'github-workflow-path-v2.mjs', 'github-workflow-path-v2.d.mts', 'github-run-facts-v2.mjs', 'github-run-facts-v2-internal.mjs', 'github-run-facts-v2.d.mts'];
+const modules = ['github-terminal-run.mjs', 'github-terminal-run.d.mts', 'github-source-evidence.mjs', 'github-source-evidence.d.mts', 'github-run-json.mjs', 'github-run-identity.mjs', 'github-run-identity.d.mts', 'github-workflow-path-v2.mjs', 'github-workflow-path-v2.d.mts', 'github-run-facts-v2.mjs', 'github-run-facts-v2-internal.mjs', 'github-run-facts-v2.d.mts'];
 const files = Object.fromEntries([
   ...modules.map(name => ['src/server/' + name, 'src/server/' + name]),
-  ...['github-run-identity.test.mjs', 'github-workflow-path-v2.test.mjs', 'github-run-facts-v2.test.mjs'].map(name => ['tests/' + name, 'tests/' + name]),
+  ...['github-terminal-run.test.mjs', 'github-source-evidence.test.mjs', 'github-run-identity.test.mjs', 'github-workflow-path-v2.test.mjs', 'github-run-facts-v2.test.mjs'].map(name => ['tests/' + name, 'tests/' + name]),
   ['tests/bundle-consumption.test.mjs', 'tooling/source-bundle/bundle-consumption.test.mjs'],
   ['package.json', 'tooling/source-bundle/package.json'], ['package-lock.json', 'tooling/source-bundle/package-lock.json'],
   ['LICENSE', 'LICENSE'], ['LOSSLESS-JSON-LICENSE.md', 'tooling/source-bundle/LOSSLESS-JSON-LICENSE.md'],
   ['verify-bundle.mjs', 'scripts/verify-source-tooling-bundle.mjs'],
-  ['README.md', 'tooling/source-bundle/README.md'],
+  ['README.md', 'tooling/source-bundle/README.md'], ['SOURCE-EVIDENCE.md', 'docs/source-evidence-consumer.md'],
 ]);
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const manifest = { format: 'civicpulse-source-tooling-local-v1', source_commit: commit,
-  entrypoints: { './run-facts-v2': { import: 'src/server/github-run-facts-v2.mjs', types: 'src/server/github-run-facts-v2.d.mts' }, './workflow-path-v2': { import: 'src/server/github-workflow-path-v2.mjs', types: 'src/server/github-workflow-path-v2.d.mts' } },
+  entrypoints: { './terminal-run': { import: 'src/server/github-terminal-run.mjs', types: 'src/server/github-terminal-run.d.mts' }, './source-evidence': { import: 'src/server/github-source-evidence.mjs', types: 'src/server/github-source-evidence.d.mts' }, './run-facts-v2': { import: 'src/server/github-run-facts-v2.mjs', types: 'src/server/github-run-facts-v2.d.mts' }, './workflow-path-v2': { import: 'src/server/github-workflow-path-v2.mjs', types: 'src/server/github-workflow-path-v2.d.mts' } },
   dependency: { name: 'lossless-json', version: '4.3.2', resolved: 'https://registry.npmjs.org/lossless-json/-/lossless-json-4.3.2.tgz', integrity: 'sha512-TWT1oIGJKaHkme0nDFoW9Tsv0/IZxy6P8rzD03hZpk7de04PWGfl/uMj/WcENrJLNF4P+QGGByPjap6qx++bDQ==', license: 'MIT', repository: 'https://github.com/josdejong/lossless-json.git' },
   directories: {}, files: {} };
 const payloads = new Map();

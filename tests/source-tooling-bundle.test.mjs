@@ -18,8 +18,8 @@ test('directory bundle export and verifier enforce pinned bytes, modes and exact
   const repository = join(parent, 'repo'); await mkdir(repository);
   // Isolated fixture Git repository, never the API/shared index.
   for (const directory of ['src/server', 'tooling/source-bundle']) await cp(new URL(directory, root), join(repository, directory), { recursive: true });
-  for (const directory of ['tests', 'scripts']) await mkdir(join(repository, directory));
-  for (const file of ['LICENSE', 'scripts/export-source-tooling.mjs', 'scripts/verify-source-tooling-bundle.mjs', 'tests/github-run-identity.test.mjs', 'tests/github-run-facts-v2.test.mjs', 'tests/github-workflow-path-v2.test.mjs']) {
+  for (const directory of ['tests', 'scripts', 'docs']) await mkdir(join(repository, directory));
+  for (const file of ['docs/source-evidence-consumer.md', 'tests/github-source-evidence.test.mjs', 'LICENSE', 'scripts/export-source-tooling.mjs', 'scripts/verify-source-tooling-bundle.mjs', 'tests/github-run-identity.test.mjs', 'tests/github-run-facts-v2.test.mjs', 'tests/github-workflow-path-v2.test.mjs', 'tests/github-terminal-run.test.mjs']) {
     await cp(new URL(file, root), join(repository, file));
   }
   const git = args => execFileSync('git', ['-C', repository, ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
@@ -34,7 +34,7 @@ test('directory bundle export and verifier enforce pinned bytes, modes and exact
   assert.equal(first.verifier_sha256, hash(await readFile(new URL('scripts/verify-source-tooling-bundle.mjs', root))));
   const manifest = await verify(original, first.manifest_sha256);
   assert.equal(manifest.source_commit, source);
-  assert.equal(Object.keys(manifest.files).length, 18);
+  assert.equal(Object.keys(manifest.files).length, 25);
   assert.equal(manifest.files['src/server/github-run-facts-v2.mjs'].sha256, hash(await readFile(new URL('src/server/github-run-facts-v2.mjs', root))));
   assert.throws(() => exportTo(original));
   assert.throws(() => exportTo(join(parent, 'short-commit'), source.slice(0, 7)));

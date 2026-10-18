@@ -1,0 +1,22 @@
+import assert from 'node:assert/strict';
+import { performance } from 'node:perf_hooks';
+import { canonicalizeGitHubPolicyJson, assembleGitHubSourceEvidence, projectGitHubSourceConfig } from '../src/server/github-source-evidence.mjs';
+import { sourceJsonStats, parseBoundedSourceAggregate } from '../src/server/github-run-json.mjs';
+const results=[];
+function measure(name,operation){const start=performance.now();operation();results.push({name,elapsed_ms:Math.round(performance.now()-start),rss_bytes:process.memoryUsage().rss,max_rss_kib:process.resourceUsage().maxRSS});console.log(JSON.stringify(results.at(-1)));}
+const input='['+'0,'.repeat(131070)+'[]]';
+measure('tokens-at',()=>{assert.equal(sourceJsonStats(input,true).tokens,262144);assert.equal(canonicalizeGitHubPolicyJson(input),input);});
+let parses=0;
+measure('tokens-over',()=>{assert.throws(()=>parseBoundedSourceAggregate(input.slice(0,-3)+'[0]]',()=>{parses++;}));assert.equal(parses,0);});
+const string='"'+'a'.repeat(65534)+'"';
+const base='['+Array(127).fill(string).join(',')+']';
+const exact=base+' '.repeat(8388608-Buffer.byteLength(base));
+let retained;
+measure('bytes-at-retained',()=>{retained=canonicalizeGitHubPolicyJson(exact);});
+measure('bytes-over',()=>{assert.throws(()=>parseBoundedSourceAggregate(exact+' ',()=>{parses++;}));assert.equal(parses,0);});
+const fields=['repository','workflow','run_before','run_attempt','run_after','ref_before','ref_after','protection_before','protection_after','workflow_file','requests'];
+const parts=Object.fromEntries(fields.map(k=>[k,'{}']));parts.requests='[]';parts.protection_before=retained;
+measure('assembly-with-retained-inputs',()=>{const assembled=assembleGitHubSourceEvidence(parts);assert.ok(assembled.includes('"schema_version":1'));});
+const config=JSON.stringify({source:{repository_id:'9007199254740993',repository_owner_id:'9007199254740994',repository_full_name:'CivicPulse/fixture',workflow_id:'9007199254740995',workflow_path:'.github/workflows/publish.yml',workflow_file_sha256:'a'.repeat(64),ref:'refs/heads/main',api_version:'2026-03-10',run_path_form:'relative-main',allowed_events:['push']},provider:{account_id:'a',project_id:'p',project_name:'p',production_origin:'https://example.org',pages_origin:'https://example.org'}}).replace('"allowed_events":["push"]','"allowed_events":["push"],"protection_bundle":'+retained);
+measure('config-with-retained-inputs',()=>{assert.equal(projectGitHubSourceConfig(config).source.repository_id,'9007199254740993');});
+console.log(JSON.stringify({node:process.version,at_tokens:262144,over_tokens:262145,at_bytes:8388608,over_bytes:8388609,rejected_dependency_calls:parses,results}));

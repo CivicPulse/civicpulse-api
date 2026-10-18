@@ -3,6 +3,8 @@ import { randomUUID } from 'node:crypto';
 import { readFileSync, readdirSync } from 'node:fs';
 import { readWebData } from './import-web.mjs';
 import { testDispatchConcurrency } from './test-dispatch-concurrency.mjs';
+import { testDeploymentConcurrency } from './test-deployment-concurrency.mjs';
+import { testBuildConcurrency } from './test-build-concurrency.mjs';
 const container = process.env.CIVICPULSE_TEST_CONTAINER || 'civicpulse-api-db-test';
 function command(args, input) {
   const result = spawnSync('podman', args, { input, encoding: 'utf8' });
@@ -34,7 +36,8 @@ try {
     (_,name) => `do $$ begin create role ${name} nologin; exception when duplicate_object then null; end $$;`
   );
   let sql = [bootstrap,...readdirSync('supabase/migrations').filter(f=>f.endsWith('.sql')).sort()
-    .map(f=>readFileSync(`supabase/migrations/${f}`,'utf8')),...['security.sql','publication.sql','private-events.sql','delivery-status.sql','dispatch.sql','receipt-manifest.sql'].map(file=>readFileSync(`tests/${file}`,'utf8').replace('-- SHARED_URL_PUBLISH_CORPUS',()=>urlCasesSql))].join('\n');
+    .map(f=>readFileSync(`supabase/migrations/${f}`,'utf8')),...['security.sql','publication.sql','private-events.sql','delivery-status.sql','dispatch.sql','receipt-manifest.sql','enrollment-source.sql'].map(file=>readFileSync(`tests/${file}`,'utf8').replace('-- SHARED_URL_PUBLISH_CORPUS',()=>urlCasesSql))].join('\n');
+  sql = sql.replace('-- BUILD_CLAIMS_SCENARIO', () => readFileSync('tests/build-claims.sql','utf8').replace('-- BUILD_TRANSITIONS_SCENARIO', () => readFileSync('tests/build-transitions.sql','utf8').replace('-- DEPLOYMENT_SCENARIO', () => readFileSync('tests/deployment-control.sql','utf8').replace('-- FINISH_RECONCILE_SCENARIO', () => readFileSync('tests/deployment-outcomes.sql','utf8')))));
   if (process.argv.includes('--web-data')) {
     const records = await readWebData(new URL('../../civicpulse-web/', import.meta.url).pathname, { rawGeometry: process.argv.includes('--raw-geometry') });
     const literal = value => "'" + String(value).replaceAll("'", "''") + "'";
@@ -50,7 +53,9 @@ try {
   }
   const output = command(['exec','-i',container,'psql','-q','-X','-U','postgres','-d',database,'-v','ON_ERROR_STOP=1'],sql);
   console.log(output.slice(-4000));
+  if (!process.argv.includes('--web-data')) await testBuildConcurrency(command, container, database);
   await testDispatchConcurrency(command, container, database);
+  if (!process.argv.includes('--web-data')) await testDeploymentConcurrency(command, container);
 } finally {
   command(['exec',container,'dropdb','-U','postgres',database]);
 }
