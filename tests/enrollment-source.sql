@@ -18,6 +18,28 @@ create function pg_temp.denied(command text,expected text default '42501') retur
   raise exception 'Unexpected success: %',command;
 end $$;
 create function pg_temp.ctx(k text) returns jsonb language sql as $$ select value from m21_context where key=k $$;
+-- Calls only the actual public staff RPC under the caller's real role.
+create function pg_temp.assert_error_status(expected_code text,expected_time timestamptz) returns void language plpgsql security invoker as $$
+declare a jsonb; b jsonb; original_zone text:=current_setting('TimeZone');
+begin
+  perform set_config('TimeZone','Pacific/Honolulu',true);
+  a:=public.cms_publication_status();
+  perform set_config('TimeZone','Asia/Kolkata',true);
+  b:=public.cms_publication_status();
+  perform set_config('TimeZone',original_zone,true);
+  perform pg_temp.assert((select array_agg(k order by k) from jsonb_object_keys(a) k)=
+    (select array_agg(k order by k) from unnest(array['dataset_epoch','desired_generation','live_dataset_epoch','live_generation','generation_lag','live_inventory_complete','live_deployment_id','live_source_sha','live_at','paused','bootstrap_complete','state','active_job','last_error','next_attempt_at','status_error','observed_at']) k),'exact PublicationStatus keys');
+  if expected_code is null then
+    perform pg_temp.assert(a->'last_error'='null'::jsonb and b->'last_error'='null'::jsonb,'no error is JSON null');
+  else
+    perform pg_temp.assert((select array_agg(k order by k) from jsonb_object_keys(a->'last_error') k)=array['code','occurred_at'],'exact error object keys');
+    perform pg_temp.assert(a->'last_error'->>'code'=expected_code and jsonb_typeof(a->'last_error'->'occurred_at')='string','typed error object');
+    perform pg_temp.assert((a->'last_error'->>'occurred_at')::timestamptz=expected_time,'error time equals durable failure acknowledgment');
+    perform pg_temp.assert(a->'last_error'->>'occurred_at' ~ '[+]00:00$','error timestamp serialized as UTC');
+  end if;
+  perform pg_temp.assert(a->'last_error'=b->'last_error','reads/timezone changes do not retimestamp');
+  perform pg_temp.assert((b->>'observed_at')::timestamptz>=(a->>'observed_at')::timestamptz,'observed_at remains read time');
+end $$;
 create function pg_temp.config() returns jsonb language sql immutable as $$ select jsonb_build_object(
  'schema_version',1,
  'source',jsonb_build_object('repository_id','9007199254740993','repository_owner_id','9007199254740994','repository_full_name','CivicPulse/fixture','workflow_id','99999999999999999999','workflow_path','.github/workflows/publish.yml','workflow_file_sha256',repeat('a',64),'ref','refs/heads/main','allowed_events','["push","schedule","workflow_dispatch"]'::jsonb,'api_version','2026-03-10','policy_format_version',1,'protection_bundle','{"classic":{"required_status_checks":{"strict":true,"contexts":["civicpulse-validate"]}},"rulesets":[],"effective_rules":[]}'::jsonb,'checkout_contract_version',1,'run_path_form','relative-main'),
@@ -58,6 +80,7 @@ insert into auth.users values('00000000-0000-4000-8000-000000000061');
 insert into civicpulse.members values('00000000-0000-4000-8000-000000000061','admin');
 set session authorization authenticated;
 set "request.jwt.claim.sub"='00000000-0000-4000-8000-000000000061';
+select pg_temp.assert_error_status(null,null);
 select public.save_draft('organization','m21-org','{"id":"m21-org","name":"M21 fixture"}',0);
 select public.publish('organization','m21-org',1);
 reset session authorization;

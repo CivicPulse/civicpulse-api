@@ -151,6 +151,12 @@ select pg_temp.assert(pg_temp.reconcile_test(pg_temp.receipt('next_failure_recei
 reset session authorization;
 select pg_temp.assert((select to_jsonb(p)=pg_temp.ctx('previous_live_state') from civicpulse_delivery.pipeline_state p),'failure preserves every previously verified live field');
 select pg_temp.assert((select intervention_required and next_attempt_at is null from civicpulse_delivery.build_counter),'second failure requires intervention');
+insert into m21_context values('expected_error',(select jsonb_build_object('code',last_error,'at',last_error_occurred_at) from civicpulse_delivery.build_counter));
+select pg_temp.assert((select c.last_error_occurred_at=a.acknowledged_at from civicpulse_delivery.build_counter c cross join civicpulse_delivery.deployment_acknowledgments a where a.job_id=(pg_temp.ctx('claim')->>'job_id')::uuid and a.result->>'state'='failed'),'deployment error uses exact durable acknowledgment time');
+set session authorization authenticated;
+select pg_temp.assert_error_status(pg_temp.ctx('expected_error')->>'code',(pg_temp.ctx('expected_error')->>'at')::timestamptz);
+reset session authorization;
+
 rollback to cms_prior_cycle;
 
 -- Saved replay remains read-only after receipt expiry, but not revocation.
@@ -207,8 +213,27 @@ insert into m21_context values('failure_ack',pg_temp.finish_test('failed',pg_tem
 select pg_temp.assert(pg_temp.finish_test('failed',pg_temp.receipt('failure_receipt'))=pg_temp.ctx('failure_ack'),'failure acknowledgment replay');
 reset session authorization;
 select pg_temp.assert((select intervention_required and last_error='deployment_failed' and next_attempt_at is null from civicpulse_delivery.build_counter),'provider failure requires intervention');
+insert into m21_context values('expected_error',(select jsonb_build_object('code',last_error,'at',last_error_occurred_at) from civicpulse_delivery.build_counter));
+select pg_temp.assert((select c.last_error_occurred_at=a.acknowledged_at from civicpulse_delivery.build_counter c cross join civicpulse_delivery.deployment_acknowledgments a where a.job_id=(pg_temp.ctx('claim')->>'job_id')::uuid and a.result->>'state'='failed'),'deployment error uses exact durable acknowledgment time');
+set session authorization authenticated;
+select pg_temp.assert_error_status(pg_temp.ctx('expected_error')->>'code',(pg_temp.ctx('expected_error')->>'at')::timestamptz);
+reset session authorization;
+
 select pg_temp.assert((select not external_authority and active_job_id is null from civicpulse_delivery.enrollment_state),'terminal failure releases');
 select pg_temp.assert((select not live_inventory_complete and live_deployment_id is null from civicpulse_delivery.pipeline_state),'failure preserves markerless prior without fabricated CMS live');
+savepoint revoked_status_reader;
+delete from civicpulse.members where user_id='00000000-0000-4000-8000-000000000061';
+set session authorization authenticated;
+select pg_temp.denied('select public.cms_publication_status()');
+reset session authorization;
+set session authorization anon;
+select pg_temp.denied('select public.cms_publication_status()');
+reset session authorization;
+set session authorization cp_m21_runner;
+select pg_temp.denied('select public.cms_publication_status()');
+reset session authorization;
+rollback to revoked_status_reader;
+
 rollback to failure_candidate;
 
 -- Unsupported stage/status and swapped canonical remain nonconsumable.

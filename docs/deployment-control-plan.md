@@ -108,12 +108,15 @@ real login, credentials, provider calls, hosted migrations or remote pushes were
 performed. M2.3 private function signatures/results are in the linked server-only
 types; public v1/M2a remain unchanged.
 
-### Existing status discrepancy routed to lead
+### Status correction
 
-The M2.2 `cms_publication_status` function returns `last_error` as text/null, while
-`src/publication.types.ts` declares `{code,occurred_at}|null`. This pre-existing
-mismatch was reported rather than silently changing the frozen browser shape.
-The lead's disposition is required before claiming complete status/type parity.
+Lead accepted the existing ADR0001 object contract. The additive correction and
+focused validation are recorded in [staff-error-status-correction.md](staff-error-status-correction.md).
+`PublicationStatus` remains unchanged; SQL now supplies exactly null or
+`{code,occurred_at}` with the durable failure acknowledgment time in UTC.
+Core `bcd213e7` received independent Security scoped pass as relayed by lead;
+the focused correction still requires independent final delta review. Security's
+core Node run was 64 passed/2 existing skips, distinct from developer 66/66.
 
 ### Adapter-only limits
 

@@ -163,7 +163,7 @@ select pg_temp.denied($q$select civicpulse_delivery.reconcile_job((pg_temp.ctx('
 reset session authorization;
 update civicpulse_delivery.build_jobs set lease_expires_at=clock_timestamp()-interval '1 second' where job_id=(pg_temp.ctx('claim')->>'job_id')::uuid;
 -- Existing intervention is a negative state fixture, not an approval.
-update civicpulse_delivery.build_counter set intervention_required=true,last_error='build_failed';
+update civicpulse_delivery.build_counter set intervention_required=true,last_error='build_failed',last_error_occurred_at='2026-01-01T00:00:00Z';
 set session authorization cp_m21_reconciler;
 insert into m21_context values('recovery_ack',civicpulse_delivery.reconcile_job((pg_temp.ctx('claim')->>'job_id')::uuid,(pg_temp.ctx('claim')->>'fence')::bigint,jsonb_build_object('observation_id',pg_temp.ctx('prebegin_terminal_receipt')->>'observation_id')));
 select pg_temp.assert(pg_temp.ctx('recovery_ack')->>'state'='superseded' and pg_temp.ctx('recovery_ack')->'reclaimable'='true','terminal plus DB expiry recovers prebegin only');
@@ -171,7 +171,7 @@ select pg_temp.assert(civicpulse_delivery.reconcile_job((pg_temp.ctx('claim')->>
 reset session authorization;
 select pg_temp.assert((select recovery_reason='lease_expired' from civicpulse_delivery.deployment_acknowledgments where job_id=(pg_temp.ctx('claim')->>'job_id')::uuid),'private reason retained');
 select pg_temp.assert(not exists(select 1 from civicpulse_delivery.deployment_intents),'expiry recovery never begins upload');
-select pg_temp.assert((select intervention_required and last_error='build_failed' from civicpulse_delivery.build_counter),'expiry recovery never clears existing intervention');
+select pg_temp.assert((select intervention_required and last_error='build_failed' and last_error_occurred_at='2026-01-01T00:00:00Z' from civicpulse_delivery.build_counter),'expiry recovery never clears existing intervention');
 rollback to prebegin_recovery;
 set session authorization cp_m21_runner;
 insert into m21_context values('begin',pg_temp.begin_test());

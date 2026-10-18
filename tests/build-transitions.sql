@@ -32,6 +32,11 @@ insert into m21_context values('second_source_challenge',civicpulse_delivery.ope
 insert into m21_context values('second_source_receipt',civicpulse_delivery.record_source_observation((pg_temp.ctx('second_source_challenge')->>'challenge_id')::uuid,pg_temp.source_attempt('2')));
 reset session authorization;
 
+-- Both-null/both-present and the closed code allowlist are database constraints.
+select pg_temp.denied($q$update civicpulse_delivery.build_counter set last_error='export_failed'$q$,'23514');
+select pg_temp.denied($q$update civicpulse_delivery.build_counter set last_error_occurred_at=clock_timestamp()$q$,'23514');
+select pg_temp.denied($q$update civicpulse_delivery.build_counter set last_error='invented',last_error_occurred_at=clock_timestamp()$q$,'23514');
+
 -- Security regression: a caller reason and a fresh SAME-SHA second-attempt
 -- receipt cannot turn a failed candidate into a nonintervention replacement.
 savepoint supersession_lies;
@@ -116,6 +121,12 @@ select pg_temp.denied($q$select civicpulse_delivery.claim_build('900719925474099
 select pg_temp.denied($q$select civicpulse_delivery.claim_build('9007199254740993:1',repeat('f',40))$q$,'55000');
 reset session authorization;
 select pg_temp.assert((select intervention_required and next_attempt_at is null and last_error='export_failed' from civicpulse_delivery.build_counter),'coarse failure latches intervention');
+insert into m21_context values('expected_error',(select jsonb_build_object('code',last_error,'at',last_error_occurred_at) from civicpulse_delivery.build_counter));
+select pg_temp.assert((select c.last_error_occurred_at=a.acknowledged_at from civicpulse_delivery.build_counter c cross join civicpulse_delivery.build_transitions a join civicpulse_delivery.build_jobs j using(job_id) where j.job_id=(pg_temp.ctx('claim')->>'job_id')::uuid and a.sequence=j.transition_sequence),'counter time bound to inserted failure transition');
+set session authorization authenticated;
+select pg_temp.assert_error_status(pg_temp.ctx('expected_error')->>'code',(pg_temp.ctx('expected_error')->>'at')::timestamptz);
+reset session authorization;
+
 select pg_temp.assert((select to_jsonb(p)=pg_temp.ctx('live_before') from civicpulse_delivery.pipeline_state p),'failure preserves prior pipeline/live fields');
 update civicpulse_delivery.build_jobs set lease_expires_at=clock_timestamp()-interval '1 second' where job_id=(pg_temp.ctx('claim')->>'job_id')::uuid;
 insert into m21_context values('terminal_snapshot',jsonb_build_object('jobs',(select jsonb_agg(to_jsonb(j)) from civicpulse_delivery.build_jobs j),'counter',(select to_jsonb(c) from civicpulse_delivery.build_counter c),'receipts',(select jsonb_agg(to_jsonb(o) order by observation_id) from civicpulse_delivery.observations o)));
@@ -163,6 +174,12 @@ select pg_temp.denied($q$select civicpulse_delivery.claim_build('900719925474099
 select pg_temp.denied($q$select civicpulse_delivery.claim_build('9007199254740993:1',repeat('f',40))$q$,'55000');
 reset session authorization;
 select pg_temp.assert((select intervention_required and next_attempt_at is null and last_error='export_failed' from civicpulse_delivery.build_counter),'coarse failure latches intervention');
+insert into m21_context values('expected_error',(select jsonb_build_object('code',last_error,'at',last_error_occurred_at) from civicpulse_delivery.build_counter));
+select pg_temp.assert((select c.last_error_occurred_at=a.acknowledged_at from civicpulse_delivery.build_counter c cross join civicpulse_delivery.build_transitions a join civicpulse_delivery.build_jobs j using(job_id) where j.job_id=(pg_temp.ctx('claim')->>'job_id')::uuid and a.sequence=j.transition_sequence),'counter time bound to inserted failure transition');
+set session authorization authenticated;
+select pg_temp.assert_error_status(pg_temp.ctx('expected_error')->>'code',(pg_temp.ctx('expected_error')->>'at')::timestamptz);
+reset session authorization;
+
 select pg_temp.assert((select to_jsonb(p)=pg_temp.ctx('live_before') from civicpulse_delivery.pipeline_state p),'failure preserves prior pipeline/live fields');
 update civicpulse_delivery.build_jobs set lease_expires_at=clock_timestamp()-interval '1 second' where job_id=(pg_temp.ctx('claim')->>'job_id')::uuid;
 insert into m21_context values('terminal_snapshot',jsonb_build_object('jobs',(select jsonb_agg(to_jsonb(j)) from civicpulse_delivery.build_jobs j),'counter',(select to_jsonb(c) from civicpulse_delivery.build_counter c),'receipts',(select jsonb_agg(to_jsonb(o) order by observation_id) from civicpulse_delivery.observations o)));
@@ -210,6 +227,12 @@ select pg_temp.denied($q$select civicpulse_delivery.claim_build('900719925474099
 select pg_temp.denied($q$select civicpulse_delivery.claim_build('9007199254740993:1',repeat('f',40))$q$,'55000');
 reset session authorization;
 select pg_temp.assert((select intervention_required and next_attempt_at is null and last_error='build_failed' from civicpulse_delivery.build_counter),'coarse failure latches intervention');
+insert into m21_context values('expected_error',(select jsonb_build_object('code',last_error,'at',last_error_occurred_at) from civicpulse_delivery.build_counter));
+select pg_temp.assert((select c.last_error_occurred_at=a.acknowledged_at from civicpulse_delivery.build_counter c cross join civicpulse_delivery.build_transitions a join civicpulse_delivery.build_jobs j using(job_id) where j.job_id=(pg_temp.ctx('claim')->>'job_id')::uuid and a.sequence=j.transition_sequence),'counter time bound to inserted failure transition');
+set session authorization authenticated;
+select pg_temp.assert_error_status(pg_temp.ctx('expected_error')->>'code',(pg_temp.ctx('expected_error')->>'at')::timestamptz);
+reset session authorization;
+
 select pg_temp.assert((select to_jsonb(p)=pg_temp.ctx('live_before') from civicpulse_delivery.pipeline_state p),'failure preserves prior pipeline/live fields');
 update civicpulse_delivery.build_jobs set lease_expires_at=clock_timestamp()-interval '1 second' where job_id=(pg_temp.ctx('claim')->>'job_id')::uuid;
 insert into m21_context values('terminal_snapshot',jsonb_build_object('jobs',(select jsonb_agg(to_jsonb(j)) from civicpulse_delivery.build_jobs j),'counter',(select to_jsonb(c) from civicpulse_delivery.build_counter c),'receipts',(select jsonb_agg(to_jsonb(o) order by observation_id) from civicpulse_delivery.observations o)));
@@ -257,6 +280,12 @@ select pg_temp.denied($q$select civicpulse_delivery.claim_build('900719925474099
 select pg_temp.denied($q$select civicpulse_delivery.claim_build('9007199254740993:1',repeat('f',40))$q$,'55000');
 reset session authorization;
 select pg_temp.assert((select intervention_required and next_attempt_at is null and last_error='validation_failed' from civicpulse_delivery.build_counter),'coarse failure latches intervention');
+insert into m21_context values('expected_error',(select jsonb_build_object('code',last_error,'at',last_error_occurred_at) from civicpulse_delivery.build_counter));
+select pg_temp.assert((select c.last_error_occurred_at=a.acknowledged_at from civicpulse_delivery.build_counter c cross join civicpulse_delivery.build_transitions a join civicpulse_delivery.build_jobs j using(job_id) where j.job_id=(pg_temp.ctx('claim')->>'job_id')::uuid and a.sequence=j.transition_sequence),'counter time bound to inserted failure transition');
+set session authorization authenticated;
+select pg_temp.assert_error_status(pg_temp.ctx('expected_error')->>'code',(pg_temp.ctx('expected_error')->>'at')::timestamptz);
+reset session authorization;
+
 select pg_temp.assert((select to_jsonb(p)=pg_temp.ctx('live_before') from civicpulse_delivery.pipeline_state p),'failure preserves prior pipeline/live fields');
 update civicpulse_delivery.build_jobs set lease_expires_at=clock_timestamp()-interval '1 second' where job_id=(pg_temp.ctx('claim')->>'job_id')::uuid;
 insert into m21_context values('terminal_snapshot',jsonb_build_object('jobs',(select jsonb_agg(to_jsonb(j)) from civicpulse_delivery.build_jobs j),'counter',(select to_jsonb(c) from civicpulse_delivery.build_counter c),'receipts',(select jsonb_agg(to_jsonb(o) order by observation_id) from civicpulse_delivery.observations o)));
@@ -304,6 +333,12 @@ select pg_temp.denied($q$select civicpulse_delivery.claim_build('900719925474099
 select pg_temp.denied($q$select civicpulse_delivery.claim_build('9007199254740993:1',repeat('f',40))$q$,'55000');
 reset session authorization;
 select pg_temp.assert((select intervention_required and next_attempt_at is null and last_error='validation_failed' from civicpulse_delivery.build_counter),'coarse failure latches intervention');
+insert into m21_context values('expected_error',(select jsonb_build_object('code',last_error,'at',last_error_occurred_at) from civicpulse_delivery.build_counter));
+select pg_temp.assert((select c.last_error_occurred_at=a.acknowledged_at from civicpulse_delivery.build_counter c cross join civicpulse_delivery.build_transitions a join civicpulse_delivery.build_jobs j using(job_id) where j.job_id=(pg_temp.ctx('claim')->>'job_id')::uuid and a.sequence=j.transition_sequence),'counter time bound to inserted failure transition');
+set session authorization authenticated;
+select pg_temp.assert_error_status(pg_temp.ctx('expected_error')->>'code',(pg_temp.ctx('expected_error')->>'at')::timestamptz);
+reset session authorization;
+
 select pg_temp.assert((select to_jsonb(p)=pg_temp.ctx('live_before') from civicpulse_delivery.pipeline_state p),'failure preserves prior pipeline/live fields');
 update civicpulse_delivery.build_jobs set lease_expires_at=clock_timestamp()-interval '1 second' where job_id=(pg_temp.ctx('claim')->>'job_id')::uuid;
 insert into m21_context values('terminal_snapshot',jsonb_build_object('jobs',(select jsonb_agg(to_jsonb(j)) from civicpulse_delivery.build_jobs j),'counter',(select to_jsonb(c) from civicpulse_delivery.build_counter c),'receipts',(select jsonb_agg(to_jsonb(o) order by observation_id) from civicpulse_delivery.observations o)));
