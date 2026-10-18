@@ -3,7 +3,9 @@
   "version": "0.0.0-local",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=22.12" },
+  "engines": {
+    "node": ">=22.12"
+  },
   "exports": {
     "./run-facts-v2": {
       "types": "./src/server/github-run-facts-v2.d.mts",
@@ -12,10 +14,16 @@
     "./workflow-path-v2": {
       "types": "./src/server/github-workflow-path-v2.d.mts",
       "import": "./src/server/github-workflow-path-v2.mjs"
+    },
+    "./source-evidence": {
+      "types": "./src/server/github-source-evidence.d.mts",
+      "import": "./src/server/github-source-evidence.mjs"
     }
   },
   "scripts": {
-    "test": "node --test tests/github-run-identity.test.mjs tests/github-workflow-path-v2.test.mjs tests/github-run-facts-v2.test.mjs tests/bundle-consumption.test.mjs"
+    "test": "node --test tests/github-run-identity.test.mjs tests/github-workflow-path-v2.test.mjs tests/github-run-facts-v2.test.mjs tests/bundle-consumption.test.mjs tests/github-source-evidence.test.mjs"
   },
-  "dependencies": { "lossless-json": "4.3.2" }
+  "dependencies": {
+    "lossless-json": "4.3.2"
+  }
 }

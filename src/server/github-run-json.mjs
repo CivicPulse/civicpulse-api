@@ -10,8 +10,8 @@ const fullMatch = (pattern, value) => typeof value === 'string' && pattern.exec(
  * lossless-json alone permits equal-valued duplicates. No numeric conversion or
  * input rewriting occurs here; the pinned parser still creates lossless values.
  */
-function preflight(raw) {
-  if (typeof raw !== 'string' || !raw.length || raw.length > runIdentityLimits.rawBytes || Buffer.byteLength(raw,'utf8') > runIdentityLimits.rawBytes) throw invalid();
+function preflight(raw, limits = runIdentityLimits) {
+  if (typeof raw !== 'string' || !raw.length || raw.length > limits.rawBytes || Buffer.byteLength(raw,'utf8') > limits.rawBytes) throw invalid();
   const stack = [];
   let index = 0, tokens = 0, rootConsumed = false;
   const consumeValue = () => {
@@ -26,7 +26,7 @@ function preflight(raw) {
   };
   while (index < raw.length) {
     if (whitespace(raw[index])) { index++; continue; }
-    if (++tokens > runIdentityLimits.tokens) throw invalid();
+    if (++tokens > limits.tokens) throw invalid();
     const character = raw[index], parent = stack.at(-1);
     if (character === '"') {
       const start = index;
@@ -36,7 +36,7 @@ function preflight(raw) {
         const pairedHigh = code >= 0xd800 && code <= 0xdbff && raw.charCodeAt(index+1) >= 0xdc00 && raw.charCodeAt(index+1) <= 0xdfff;
         const pairedLow = code >= 0xdc00 && code <= 0xdfff && raw.charCodeAt(index-1) >= 0xd800 && raw.charCodeAt(index-1) <= 0xdbff;
         stringBytes += pairedHigh ? 4 : pairedLow ? 0 : code < 0x80 ? 1 : code < 0x800 ? 2 : 3;
-        if (stringBytes > runIdentityLimits.stringBytes) throw invalid();
+        if (stringBytes > limits.stringBytes) throw invalid();
         return raw[index++];
       };
       take(); // opening quote
@@ -64,7 +64,7 @@ function preflight(raw) {
       } else consumeValue();
     } else if (character === '{' || character === '[') {
       consumeValue();
-      if (stack.length >= runIdentityLimits.depth) throw invalid();
+      if (stack.length >= limits.depth) throw invalid();
       stack.push(character === '{' ? { type:'object', state:'keyOrEnd', keys:new Set() } : { type:'array', state:'valueOrEnd' });
       index++;
     } else if (character === '}' || character === ']') {
@@ -87,6 +87,7 @@ function preflight(raw) {
     }
   }
   if (stack.length || !rootConsumed) throw invalid();
+  return tokens;
 }
 
 
@@ -97,4 +98,15 @@ export function parseBoundedRunResponse(raw, parser = parse) {
     preflight(raw);
     return parser(raw);
   } catch { throw invalid(); }
+}
+
+// Internal aggregate boundary for fixed config/evidence wrappers, never upstream
+// responses. Callers cannot override limits; legacy parser limits are unchanged.
+const aggregateLimits=Object.freeze({rawBytes:8388608,depth:72,tokens:262144,stringBytes:65536});
+export function parseBoundedSourceAggregate(raw, parser = parse) {
+  try { preflight(raw,aggregateLimits); return parser(raw); } catch { throw invalid(); }
+}
+
+export function sourceJsonStats(raw,aggregate=false) {
+  return {tokens:preflight(raw,aggregate?aggregateLimits:runIdentityLimits),bytes:Buffer.byteLength(raw,'utf8')};
 }

@@ -19,3 +19,10 @@ test('locked dependency version and MIT notice match installed artifact', async 
   assert.deepEqual(Object.keys(lock.packages).sort(), ['', 'node_modules/lossless-json']);
   assert.equal(lock.packages['node_modules/lossless-json'].integrity, 'sha512-TWT1oIGJKaHkme0nDFoW9Tsv0/IZxy6P8rzD03hZpk7de04PWGfl/uMj/WcENrJLNF4P+QGGByPjap6qx++bDQ==');
 });
+
+import { projectGitHubSourceResponse, canonicalizeGitHubPolicyJson } from 'civicpulse-source-tooling-local/source-evidence';
+test('public source evidence export retains policy precision without internal import',()=>{
+ const actual=projectGitHubSourceResponse('{"id":9007199254740993,"source_type":"Repository","source":"CivicPulse/fixture","enforcement":"active","bypass_actors":[],"unknown":1e-400}','ruleset_detail');
+ assert.equal(actual.facts.id,'9007199254740993');assert.ok(actual.json.includes('1e-400'));
+ assert.equal(canonicalizeGitHubPolicyJson('{"z":9007199254740993,"a":1e-400}'),'{"a":1e-400,"z":9007199254740993}');
+});
