@@ -103,3 +103,102 @@ removal; retain bounded reports in a private temp directory, no credential value
 If cleanup is unknown, inspect exact objects before any retry. Existing shared
 containers and repo source remain untouched. Send concrete startup/path disposition
 through lead before new image execution; Security reviews metadata independently.
+
+## Proposed execution stage after artifact inspection (HELD)
+
+Artifact inspection at recipe commit `01f8bdb` found OS postgres UID100/GID101,
+concrete readable config, and no init-script config-file writes. Inventory is
+`/tmp/civicpulse-runtime-inspection-4id5i8u2/inventory.json`, SHA256
+`7730d54c1a4b03edb391b1322d3eff74896862ceb747b5d7002caa54f515e578`.
+The stopped inspection container was removed without start/exec. This amendment
+is proposed for focused review; it does not extend the earlier inspection approval.
+
+The proposed argv (NAME and UUID are generated once and recorded before create;
+all other values fixed) is:
+
+```text
+podman create --pull=never --platform linux/amd64
+  --name NAME --label org.civicpulse.rehearsal=UUID
+  --network none --read-only --read-only-tmpfs=false
+  --user 100:101 --cap-drop ALL --security-opt no-new-privileges
+  --pids-limit 256 --memory 2g --cpus 2 --shm-size 128m --no-healthcheck
+  --tmpfs /var/lib/postgresql/data:rw,nodev,nosuid,noexec,size=1g,uid=100,gid=101,mode=0700
+  --tmpfs /var/run/postgresql:rw,nodev,nosuid,noexec,size=16m,uid=100,gid=101,mode=03775
+  --tmpfs /tmp:rw,nodev,nosuid,noexec,size=64m,mode=1777
+  --env POSTGRES_PASSWORD=local-disposable-runtime-only
+  docker.io/supabase/postgres@sha256:e85bc10ac5b141223b289e1e8dc8d448cf3df92501917149db0366b9c5aaf053
+```
+
+No command/entrypoint override: preserve `docker-entrypoint.sh`, image
+`POSTGRES_USER=supabase_admin`, default database, initdb ICU arguments and
+`postgres -D /etc/postgresql`. Preserve every image init script and preload,
+including final `ALTER ROLE postgres NOSUPERUSER ...`. No extra config tmpfs or
+rendering currently justified. Socket mode matches entrypoint chmod03775. The
+synthetic password is intentionally public test data, has no hosted meaning, and
+is confined to this network-none container. Do not inherit host DB env values.
+
+After create, separately inspect exact ID/digest/label/platform/created state,
+readonly flag, user100:101, security options, limits, three exact tmpfs, no bind
+mounts/published ports. Stop on unexpected inherited mounts. Only after this gate
+passes may the separately approved stage issue `podman start EXACT_ID` once.
+Readiness: bounded120s, inspect running/nonroot identity and final PID1 command
+`postgres -D /etc/postgresql`, then socket pg_isready plus SQL connection. A
+successful temporary initialization server is insufficient. Inspect logs for
+completion and successful terminal demotion, not merely socket availability.
+Failure retains bounded logs and stops; never disable preloads/init or elevate OS
+user to get past it. The key helper/preload runtime may reveal additional paths;
+report exact errors before any runtime-envelope change.
+
+### Setup administrator versus production migration identity
+
+Use the image-created **supabase_admin** only as the explicitly privileged local
+harness administrator. Do not create another superuser or promote postgres.
+Record before/after role flags and membership edges. Assert postgres.rolsuper=false,
+supabase_admin.rolsuper=true; record postgres CREATEDB/CREATEROLE/BYPASSRLS rather
+than changing them. No fixture grants to anon/authenticated/service_role beyond
+reviewed setup/migrations. Image managed roles are retained, not recreated with
+simpler attributes. Existing bootstrap duplicate-role handling must also assert
+that those roles match the intended test identity and do not inherit administrator.
+
+Use separate connection lanes, never one owner connection for everything:
+
+1. `psql -X -U supabase_admin` over the local socket: create only random fixture
+   databases owned by postgres, minimal synthetic Auth fixtures in those databases,
+   and test-only NOLOGIN machine identities/registry setup as needed. This lane may
+   perform owner-seeded *test setup*, never substitute provider receipt admission.
+   Setup Auth schema/table/uid can be created under SET ROLE postgres, with catalog
+   assertions; do not replace the managed postgres database's real Auth objects.
+2. `psql -X -U postgres` fresh direct connection: assert current_user=session_user
+   ='postgres' and rolsuper=false, then execute each unchanged production migration.
+   Extensions use the image's supported supautils behavior. Do not catch permission
+   errors and rerun as supabase_admin, ALTER OWNER afterward to disguise origin,
+   or add privileges. Any incompatibility is a reported migration finding.
+3. `psql -X -U supabase_admin` test orchestration: privileged setup assertions and
+   test fixture mutation only; before each guarded RPC use the existing actual
+   SET SESSION AUTHORIZATION target boundary and assert session_user=current_user
+   equals the intended NOLOGIN staff/machine identity and rolsuper=false. RESET
+   returns to the explicitly recorded administrator. Original test scripts rely on
+   superuser initial login for this switch: it must not be mistaken for postgres
+   production migration permission. Negative cases must execute after switching.
+
+Temporary pg_temp test assertion functions may belong to the harness administrator;
+production public/civicpulse/civicpulse_delivery functions and tables must retain
+postgres ownership. Catalog checks before/after suites assert proowner/relowner,
+SECURITY DEFINER flags, empty search_path, ACLs/RLS and absence of accidental
+administrator ownership. Test-only identity diagnostic statements can prove
+session_user/current_user before RPC; production function owners plus definer
+catalog establish internal owner identity without altering production functions.
+
+The warmed-upgrade lane needs explicit adaptation: keep the original prepared
+publish call in its harness connection under authenticated session authorization,
+perform production DDL through separate direct postgres connections, then reuse
+the warmed call. Preserve transactional row/manifest rollback assertions; do not
+run migration placeholders under the harness superuser. Concurrent helpers must
+likewise separate fixture setup identity from actual machine session identity.
+Freeze and review these adaptations, rather than reporting untouched harness
+compatibility. Existing stock scripts cannot yet be claimed to pass this lane.
+
+Before any suite, assert PG170011 and loaded PostGIS3.3.7 in a random postgres-owned
+database, record full dependencies, extension placement, locale and preloads. Fail
+closed on startup/version/permission/ownership drift. Full role/geometry/upgrade
+lanes remain sequential and separately evidenced; no hosted/pooler equivalence.
