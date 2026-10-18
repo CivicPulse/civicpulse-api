@@ -52,6 +52,27 @@ are retained; later phases cannot replace earlier evidence. Supplied digests do
 not prove filesystem bytes. Normal progression checks desired epoch/generation
 and config. No reverse/same-state/deploy/live transition exists.
 
+Security independently reproduced a failure escape in the original `3859239`
+supersession branch: a caller reason alone released the active claim without
+intervention. The focused correction
+`20261018015030_require_objective_build_supersession.sql` checks objective cause
+under the same catalog lock: content_changed requires the same epoch and a
+different authoritative generation; epoch_changed requires a different epoch.
+Unchanged reasons40001 cannot release the job. source_changed is deliberately
+unavailable55000 until an exact authenticated changed-source proof gate is
+reviewed; a caller string or fresh same-SHA receipt is never that proof.
+Existing exact acknowledgments still replay read-only after identity checks.
+M2.2 closure awaits independent correction review.
+
+Correction SHA256:
+`9be7fefb6dcf2cf4fd3011ea4af773c135d162c1d2fb9623eeb853d5842d3237`.
+Regressions reject all three false reasons at all five predeploy stages and prove
+a fresh same-SHA second-attempt receipt cannot create a replacement. Full job,
+counter, enrollment, receipt and acknowledgment snapshots remain unchanged.
+Positive controls use actual content publication and a labelled disposable
+owner-simulated restore epoch; normal operator reset refuses an active job.
+No hosted application or automatic historical-data repair is included.
+
 All named failures atomically latch persistent intervention and null next retry;
 there is no automatic build retry or clearance RPC. Config rotation, epoch reset,
 pause/resume, new source/attempt/receipt and registry recreation cannot clear it.

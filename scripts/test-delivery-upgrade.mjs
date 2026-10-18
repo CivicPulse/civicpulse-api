@@ -7,7 +7,7 @@ const container = 'civicpulse-api-db-test';
 const database = 'civicpulse_upgrade_' + randomUUID().replaceAll('-', '');
 const read = path => readFileSync(new URL('../' + path, import.meta.url), 'utf8');
 const baseline = ['20261016195541_civicpulse_content_api.sql', '20261016195619_restrict_platform_trigger_execution.sql', '20261016231409_private_event_publication_validation.sql', '20261016231420_private_event_source_url_v1.sql'];
-const additions = ['20261016203213_publication_generation_manifest.sql', '20261016215623_delivery_identity_status_foundation.sql', '20261016220416_delivery_dispatch_leases.sql', '20261016221834_receipt_manifest_structure.sql', '20261018010946_delivery_enrollment_source.sql', '20261018013652_delivery_build_claims.sql', '20261018014106_delivery_build_transitions.sql'];
+const additions = ['20261016203213_publication_generation_manifest.sql', '20261016215623_delivery_identity_status_foundation.sql', '20261016220416_delivery_dispatch_leases.sql', '20261016221834_receipt_manifest_structure.sql', '20261018010946_delivery_enrollment_source.sql', '20261018013652_delivery_build_claims.sql', '20261018014106_delivery_build_transitions.sql', '20261018015030_require_objective_build_supersession.sql'];
 function command(args, input) {
   const result = spawnSync('podman', args, { input, encoding: 'utf8', timeout: 120000, maxBuffer: 8 * 1024 * 1024 });
   if (result.status !== 0) throw new Error(result.stderr || result.stdout || 'Local upgrade test failed');

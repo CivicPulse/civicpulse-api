@@ -32,9 +32,47 @@ insert into m21_context values('second_source_challenge',civicpulse_delivery.ope
 insert into m21_context values('second_source_receipt',civicpulse_delivery.record_source_observation((pg_temp.ctx('second_source_challenge')->>'challenge_id')::uuid,pg_temp.source_attempt('2')));
 reset session authorization;
 
+-- Security regression: a caller reason and a fresh SAME-SHA second-attempt
+-- receipt cannot turn a failed candidate into a nonintervention replacement.
+savepoint supersession_lies;
+insert into m21_context values('supersession_before',jsonb_build_object(
+  'jobs',(select jsonb_agg(to_jsonb(j) order by fence) from civicpulse_delivery.build_jobs j),
+  'counter',(select to_jsonb(c) from civicpulse_delivery.build_counter c),
+  'enrollment',(select to_jsonb(e) from civicpulse_delivery.enrollment_state e),
+  'receipts',(select jsonb_agg(to_jsonb(o) order by observation_id) from civicpulse_delivery.observations o),
+  'acks',(select jsonb_agg(to_jsonb(a) order by job_id,sequence) from civicpulse_delivery.build_transitions a)));
+set session authorization cp_m21_runner;
+select pg_temp.denied($q$select pg_temp.phase('queued','superseded','{"reason":"source_changed"}')$q$,'55000');
+select pg_temp.denied($q$select pg_temp.phase('queued','superseded','{"reason":"content_changed"}')$q$,'40001');
+select pg_temp.denied($q$select pg_temp.phase('queued','superseded','{"reason":"epoch_changed"}')$q$,'40001');
+select pg_temp.denied($q$select civicpulse_delivery.claim_build('9007199254740993:2',repeat('f',40))$q$,'40001');
+reset session authorization;
+select pg_temp.assert(pg_temp.ctx('supersession_before')=jsonb_build_object(
+  'jobs',(select jsonb_agg(to_jsonb(j) order by fence) from civicpulse_delivery.build_jobs j),
+  'counter',(select to_jsonb(c) from civicpulse_delivery.build_counter c),
+  'enrollment',(select to_jsonb(e) from civicpulse_delivery.enrollment_state e),
+  'receipts',(select jsonb_agg(to_jsonb(o) order by observation_id) from civicpulse_delivery.observations o),
+  'acks',(select jsonb_agg(to_jsonb(a) order by job_id,sequence) from civicpulse_delivery.build_transitions a)),
+  'all false supersession reasons and same-SHA replacement leave every authority field unchanged');
+rollback to supersession_lies;
+
+-- Simulate an external restore's epoch change only in this disposable owner
+-- fixture. The normal operator reset correctly refuses an active job.
+savepoint restored_epoch;
+update civicpulse_delivery.publication_state set dataset_epoch='00000000-0000-4000-8000-000000000089';
+set session authorization cp_m21_runner;
+select pg_temp.denied($q$select pg_temp.phase('queued','superseded','{"reason":"content_changed"}')$q$,'40001');
+select pg_temp.assert(pg_temp.phase('queued','superseded','{"reason":"epoch_changed"}')='{"state":"superseded"}'::jsonb,'actual different epoch permits epoch supersession');
+select pg_temp.assert(pg_temp.phase('queued','superseded','{"reason":"epoch_changed"}')='{"state":"superseded"}'::jsonb,'exact supersession acknowledgment replays');
+reset session authorization;
+rollback to restored_epoch;
+
 savepoint failure_queued;
 set session authorization cp_m21_runner;
 select pg_temp.reach_phase('queued');
+select pg_temp.denied($q$select pg_temp.phase('queued','superseded','{"reason":"source_changed"}')$q$,'55000');
+select pg_temp.denied($q$select pg_temp.phase('queued','superseded','{"reason":"content_changed"}')$q$,'40001');
+select pg_temp.denied($q$select pg_temp.phase('queued','superseded','{"reason":"epoch_changed"}')$q$,'40001');
 select pg_temp.denied($q$select pg_temp.phase('queued','failed','{"error_code":"build_failed"}')$q$,'22023');
 select pg_temp.denied($q$select pg_temp.phase('queued','failed','{"error_code":"export_failed","raw":"forbidden"}')$q$,'22023');
 reset session authorization;
@@ -79,6 +117,9 @@ rollback to failure_queued;
 savepoint failure_exporting;
 set session authorization cp_m21_runner;
 select pg_temp.reach_phase('exporting');
+select pg_temp.denied($q$select pg_temp.phase('exporting','superseded','{"reason":"source_changed"}')$q$,'55000');
+select pg_temp.denied($q$select pg_temp.phase('exporting','superseded','{"reason":"content_changed"}')$q$,'40001');
+select pg_temp.denied($q$select pg_temp.phase('exporting','superseded','{"reason":"epoch_changed"}')$q$,'40001');
 select pg_temp.denied($q$select pg_temp.phase('exporting','failed','{"error_code":"build_failed"}')$q$,'22023');
 select pg_temp.denied($q$select pg_temp.phase('exporting','failed','{"error_code":"export_failed","raw":"forbidden"}')$q$,'22023');
 reset session authorization;
@@ -123,6 +164,9 @@ rollback to failure_exporting;
 savepoint failure_building;
 set session authorization cp_m21_runner;
 select pg_temp.reach_phase('building');
+select pg_temp.denied($q$select pg_temp.phase('building','superseded','{"reason":"source_changed"}')$q$,'55000');
+select pg_temp.denied($q$select pg_temp.phase('building','superseded','{"reason":"content_changed"}')$q$,'40001');
+select pg_temp.denied($q$select pg_temp.phase('building','superseded','{"reason":"epoch_changed"}')$q$,'40001');
 select pg_temp.denied($q$select pg_temp.phase('building','failed','{"error_code":"validation_failed"}')$q$,'22023');
 select pg_temp.denied($q$select pg_temp.phase('building','failed','{"error_code":"build_failed","raw":"forbidden"}')$q$,'22023');
 reset session authorization;
@@ -167,6 +211,9 @@ rollback to failure_building;
 savepoint failure_validating;
 set session authorization cp_m21_runner;
 select pg_temp.reach_phase('validating');
+select pg_temp.denied($q$select pg_temp.phase('validating','superseded','{"reason":"source_changed"}')$q$,'55000');
+select pg_temp.denied($q$select pg_temp.phase('validating','superseded','{"reason":"content_changed"}')$q$,'40001');
+select pg_temp.denied($q$select pg_temp.phase('validating','superseded','{"reason":"epoch_changed"}')$q$,'40001');
 select pg_temp.denied($q$select pg_temp.phase('validating','failed','{"error_code":"build_failed"}')$q$,'22023');
 select pg_temp.denied($q$select pg_temp.phase('validating','failed','{"error_code":"validation_failed","raw":"forbidden"}')$q$,'22023');
 reset session authorization;
@@ -211,6 +258,9 @@ rollback to failure_validating;
 savepoint failure_ready;
 set session authorization cp_m21_runner;
 select pg_temp.reach_phase('ready');
+select pg_temp.denied($q$select pg_temp.phase('ready','superseded','{"reason":"source_changed"}')$q$,'55000');
+select pg_temp.denied($q$select pg_temp.phase('ready','superseded','{"reason":"content_changed"}')$q$,'40001');
+select pg_temp.denied($q$select pg_temp.phase('ready','superseded','{"reason":"epoch_changed"}')$q$,'40001');
 select pg_temp.denied($q$select pg_temp.phase('ready','failed','{"error_code":"build_failed"}')$q$,'22023');
 select pg_temp.denied($q$select pg_temp.phase('ready','failed','{"error_code":"validation_failed","raw":"forbidden"}')$q$,'22023');
 reset session authorization;
@@ -293,7 +343,7 @@ select public.save_draft('organization','m21-org','{"id":"m21-org","name":"New d
 select public.publish('organization','m21-org',2);
 reset session authorization;
 set session authorization cp_m21_runner;
-select pg_temp.phase('queued','superseded','{"reason":"source_changed"}');
+select pg_temp.phase('queued','superseded','{"reason":"content_changed"}');
 select pg_temp.denied($q$select civicpulse_delivery.claim_build('9007199254740993:1',repeat('f',40))$q$,'55000');
 select pg_temp.denied($q$select civicpulse_delivery.claim_build('9007199254740993:1',repeat('e',40))$q$,'40001');
 select pg_temp.denied($q$select civicpulse_delivery.claim_build('9007199254740993:3',repeat('e',40))$q$,'55000');
@@ -324,6 +374,9 @@ rollback to invalid_progress;
 savepoint ready_status;
 set session authorization cp_m21_runner;
 select pg_temp.reach_phase('ready');
+select pg_temp.denied($q$select pg_temp.phase('ready','superseded','{"reason":"source_changed"}')$q$,'55000');
+select pg_temp.denied($q$select pg_temp.phase('ready','superseded','{"reason":"content_changed"}')$q$,'40001');
+select pg_temp.denied($q$select pg_temp.phase('ready','superseded','{"reason":"epoch_changed"}')$q$,'40001');
 reset session authorization;
 set session authorization authenticated;
 select pg_temp.assert(public.cms_publication_status()->>'state'='ready' and public.cms_publication_status()->'active_job'->>'job_id'=pg_temp.ctx('claim')->>'job_id','staff sees actual ready job');
