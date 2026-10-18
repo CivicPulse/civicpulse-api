@@ -313,3 +313,113 @@ zero effective capabilities and NoNewPrivs1. Record early and final-ready values
 All readiness/timeouts/role-demotion/admission/cleanup restrictions remain intact.
 No root fallback, widened modes, init changes or additional diagnostic command.
 Runtime execution remains held for exact revision review and lead instruction.
+
+## Single-file disposable key proposal (HELD)
+
+The 369b4ca attempt passed created-config gates, started once, then exited1 during
+the temporary server's pgsodium preload: writing
+`/etc/postgresql-custom/pgsodium_root.key` failed on readonly root and the server
+reported invalid secret key. No admission SQL or final managed demotion ran.
+Exact container was removed/absence verified. Socket path warning remains open.
+
+A separately authorized stopped-only inspection copied the helper without running
+it. SHA256 `359296e6e9d3ceb2f110e10f4f7c43d878b3bf339b4cd67a6c1b9b02d2044e43`.
+Evidence `/tmp/civicpulse-key-inspection-xq4xir6a/`: helper, stopped inspect and
+33-entry config-directory metadata inventory; no key file present in image.
+Tar-header ownership is transport metadata, not an effective running stat claim.
+Inspection container a6b8b44c... was never started, removed and confirmed absent.
+
+Helper semantics: fixed KEY_FILE above; if not a regular file, generate32 random
+bytes as64 hex characters without newline and write it; then cat that file.
+It needs no directory write if the file already exists. Preserve helper bytes,
+original preloads/init and all other config files. Do not execute the helper as a
+diagnostic because its stdout is key material.
+
+Propose the installed documented Podman **mount secret** mechanism, not a host
+bind or whole-directory tmpfs. Add exactly one argument to the reviewed argv:
+
+```text
+--secret SECRET_NAME,type=mount,target=/etc/postgresql-custom/pgsodium_root.key,uid=100,gid=101,mode=0400
+```
+
+SECRET_NAME is a new recorded UUID-based local name, absent precheck required.
+Podman5.8.7 installed create manual supports absolute target paths and numeric
+uid/gid/mode for mount secrets. No secret mutation after container creation.
+The engine stores a temporary secret resource: this is an explicit additional
+owned resource to review, not a claim it is automatically removed with tmpfs.
+No production secret, external account, host bind or persistent data volume.
+
+After exact recipe approval only, generate `secrets.token_hex(32)` in the host
+process and pass its64 ASCII bytes directly to `podman secret create NAME -`
+through subprocess stdin, no shell interpolation, newline, file, env or logging.
+Record only returned ID/name and metadata (never inspect --showsecret). No key
+bytes or key hash in the report. Fail/unknown result uses exact-name metadata
+reconciliation, never duplicate retry. All ordinary image/container checks remain.
+
+Created-state gate additionally checks one exact secret reference/name/ID, target,
+uid100/gid101/mode0400; no other secrets/mounts, no config-directory shadowing.
+Before start record `podman diff EXACT_ID`; only an explicitly reported single key
+mount placeholder and its necessary metadata, if visible, may differ from baseline.
+Unexpected config-file changes stop. Do not claim diff proves mounted secret bytes:
+engine-managed mount content can be absent from overlay diff.
+
+After the gated single start, extend the already approved stat diagnostic ONLY by
+adding `/etc/postgresql-custom/pgsodium_root.key`. Require a regular file,100:101,
+0400 and64 bytes; use `stat -c '%F %u:%g %a %s %n'` for this one path. Do not cat,
+read, hash, trace or invoke the key helper. Record its mountinfo entry read-only and
+no whole-directory overlay; keep root readonly and all3tmpfs noexec/nodev/nosuid.
+Retain bounded before/after container diff and metadata; no secret output. If the
+engine cannot provide these protections, halt rather than loosen permissions.
+
+Cleanup always handles both exact owned resources: close/stop only the recorded
+container if needed, verify ID/label/image, remove it, verify absence, then remove
+only the recorded secret ID after metadata name/ID check and verify absence.
+If create/start/cleanup result is unknown, inspect those exact IDs first. Never
+prune secrets or remove by prefix. Preserve failures and report residual resources.
+No runtime attempt, key generation, or secret creation has occurred for this proposal.
+
+Socket warning: Podman reported missing `/var/run/postgresql` while parsing user
+volumes after start. It may reflect a canonical-path alias but this has NOT been
+established. Do not silently switch mount paths. Before next runtime approval,
+resolve image `/var/run` link metadata through a separately permitted stopped-only
+metadata read (or equivalent exact published image-source evidence), then require
+one intended effective socket tmpfs in mountinfo and stat through its configured
+path. Report if a canonical target amendment is required; this proposal does not
+change socket path, modes or admit missing proof. No SQL until all effective gates.
+
+## Combined canonical socket + single-file key recipe (HELD)
+
+Stopped image metadata inspection conclusively records `/var/run` as symlink
+`../run`, `/run` directory0755/root, `/run/postgresql` directory0755/100:101.
+Evidence `/tmp/civicpulse-socket-inspection-mqlvur3t/canonical-metadata.json`.
+`podman cp` dereferenced the requested root link; a streamed export retained ONLY
+these three metadata headers (no file contents), preserving the link itself.
+The sole labelled inspection container was never started and was removed/absence
+verified. No key was generated or read.
+
+The ONE combined proposal now uses the full original constrained argv with these
+four replacement/additional arguments; all other flags/entrypoint/config remain:
+
+```text
+--mount type=tmpfs,destination=/var/lib/postgresql/data,tmpfs-size=1073741824,tmpfs-mode=0700,U=true,notmpcopyup,noexec
+--mount type=tmpfs,destination=/run/postgresql,tmpfs-size=16777216,tmpfs-mode=03775,U=true,notmpcopyup,noexec
+--mount type=tmpfs,destination=/tmp,tmpfs-size=67108864,tmpfs-mode=1777,notmpcopyup,noexec
+--secret SECRET_NAME,type=mount,target=/etc/postgresql-custom/pgsodium_root.key,uid=100,gid=101,mode=0400
+```
+
+This changes socket mount destination to the proven canonical directory only.
+The image config/entrypoint still uses `/var/run/postgresql`, reaching the same
+mount through its original symlink; do not rewrite either. Created checks expect
+`/run/postgresql`, same size/mode/U/flags. Effective diagnostics stat BOTH socket
+spellings with `%d:%i` as well as owner/mode and require identical device/inode;
+mountinfo must show exactly one socket tmpfs at canonical `/run/postgresql` with
+rw/noexec/nodev/nosuid. No alternate socket or wider `/run` mount is permitted.
+
+Single-secret generation/metadata/mode0400/read-only-file mount/container-diff and
+exact container-then-secret cleanup remain exactly the preceding proposal; no
+whole-directory overlay. Effective key stat includes regular-file type, size64,
+owner100:101/mode400, never values/hash. Poststart diagnostic augmentation is
+explicit: stat both socket paths for device/inode equality and the one key path
+for metadata only; prior proc checks unchanged. All filesystem/process admission
+must pass before SQL, with same120s bound, no privilege/init/preload fallback.
+This combined recipe awaits Security and lead approval before secret/create/start.
