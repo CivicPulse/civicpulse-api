@@ -567,3 +567,55 @@ zero CapEff and NoNewPrivs1. Repeat these, final PID command/readiness and all
 filesystem gates on the future attempt. PG_VERSION metadata was NOT captured
 in v5: its fixed regular100:101/0640-or0600 check remains mandatory and unproven.
 No version, loaded library or managed-role admission is inferred from this audit.
+
+## Exact resolved PID1 executable and remaining admission audit (HELD)
+
+v7 passed created private-IPC and effective filesystem/process security checks,
+including PGDATA0750 and regular PG_VERSION0640. It stopped before SQL because
+its gate expected bare argv[0] postgres. Retained cmdline actually contains exactly
+`/nix/var/nix/profiles/default/bin/postgres`, `-D`, `/etc/postgresql`, NUL-separated.
+Exact container and synthetic secret were removed and absence verified. Evidence:
+`/tmp/civicpulse-runtime-admission-v7-jq3t2eot`.
+
+Replace ONLY that runtime command assertion with this exact three-element array:
+
+```json
+["/nix/var/nix/profiles/default/bin/postgres","-D","/etc/postgresql"]
+```
+
+Allow only the terminating NUL when decoding /proc/1/cmdline, no argument stripping,
+extra arguments, basename-only acceptance or alternate executable. This is bound
+to the pinned image: retained Config.Env PATH begins
+`/nix/var/nix/profiles/default/bin:/usr/lib/postgresql/bin`, Config.Entrypoint is
+["docker-entrypoint.sh"] and Config.Cmd is ["postgres","-D","/etc/postgresql"].
+Require those unchanged configured facts as well as the exact resolved runtime
+array. No executable/entrypoint/arguments override is introduced. No new stat or
+readlink diagnostic is needed to accept an arbitrary path.
+
+Remaining readiness audit: v7 retained logs contain the original entrypoint's
+`PostgreSQL init process complete; ready for start up.` followed by PID1's ready
+message. These are historical observations, not future readiness or role proof.
+Future attempt requires running state, exact final PID1 array above, completion
+log and local `pg_isready -h /var/run/postgresql -U supabase_admin -d postgres`
+exit0 within the existing120s deadline; never rely on exact human-readable readiness
+output or temporary init-server availability. Repeat filesystem/process gates
+at final readiness before SQL. Any exit/error/unexpected state halts, no restart.
+
+Admission psql uses `-X -v ON_ERROR_STOP=1 -h /var/run/postgresql`, explicit database
+and role, with `-A -t` for scalar or JSON results. Compare parsed result values,
+not aligned table padding, notices, whole version banners or library path spelling.
+Require server_version_num170011, PostGIS extension/loaded/scripts version3.3.7;
+record full version/GEOS/PROJ/preload/locale output without inventing extra exact
+build-string matches. Use supabase_admin only to create the one random disposable
+postgres-owned database. Connect directly as postgres and assert session/current
+identity and rolsuper=false; install PostGIS through the image's supported behavior,
+never rerun a denied operation as stronger owner. Record owner/schema/library and
+managed role flags/membership without password fields; require supabase_admin
+superuser and postgres demoted. Failures halt rather than promote/change ownership.
+No full migration/test suite, provider or hosted operation is included.
+
+No other known path-format mismatch was found in retained configured/effective
+facts. SQL/version/extension permission and managed-role admission remain UNTESTED,
+not presumed compatible. All earlier mount/key/PG_VERSION/namespace/capability/
+NNP/cleanup bounds remain unchanged. This amendment requires exact hash review
+and lead authorization before any new runtime attempt.
