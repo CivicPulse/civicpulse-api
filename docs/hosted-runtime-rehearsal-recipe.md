@@ -423,3 +423,38 @@ explicit: stat both socket paths for device/inode equality and the one key path
 for metadata only; prior proc checks unchanged. All filesystem/process admission
 must pass before SQL, with same120s bound, no privilege/init/preload fallback.
 This combined recipe awaits Security and lead approval before secret/create/start.
+
+## Explicit bounded POSIX shared memory amendment (HELD)
+
+The dd5e5f64/v4 admission attempt loaded pgsodium and vault keys, then failed
+opening a PostgreSQL POSIX shared-memory segment with readonly-filesystem error.
+No final runtime/effective mountinfo/SQL admission was obtained. Exact container
+and synthetic secret were removed with absence checks. Evidence is retained in
+`/tmp/civicpulse-runtime-admission-v4-4f1g1yj9` (no key values or hashes).
+
+Installed Podman5.8.7 create manual states read-only plus read-only-tmpfs=false
+marks /dev and /dev/shm readonly; shm-size sets capacity, not writability. The
+retained config/shared-memory error supports this cause, not direct failed-run
+mountinfo proof. Preserve PostgreSQL config and dynamic shared-memory selection.
+
+Add ONE exact mount argument to the complete combined canonical-socket/key argv:
+
+```text
+--mount type=tmpfs,destination=/dev/shm,tmpfs-size=134217728,tmpfs-mode=1777,rw,notmpcopyup,noexec,nodev,nosuid
+```
+
+Installed --mount tmpfs size/mode/copyup and common read-write/noexec/nodev/nosuid
+options are used. Keep --shm-size128m, --read-only-tmpfs=false, readonly root,
+user100:101, cap-dropALL/NNP/networknone and all other mounts/resources unchanged.
+No writable whole /dev,/run or alternate memory mode; no hostIPC/user change.
+
+Created gate requires exactly FOUR explicit tmpfs targets: earlier three plus
+this sole /dev/shm134217728/mode1777/rw/noexec/nodev/nosuid, no copyup, and no
+additional unnamed shared-memory volume. If engine representation conflicts or
+omits flags, halt before start. Effective poststart diagnostic explicitly adds
+`/dev/shm` to stat (root0:0/mode1777 directory) and requires exactly one canonical
+mountinfo entry, tmpfs rw/noexec/nodev/nosuid, size131072k or equivalent134217728
+bytes. Retain actual flags/size rather than infer them from --shm-size. All existing
+key/socket/PID1/capability/NNP/readiness gates precede SQL and remain mandatory.
+No retry on failure. This amendment needs exact Security/lead approval before
+another secret/create/start; full adapted suites and hosted actions remain excluded.
