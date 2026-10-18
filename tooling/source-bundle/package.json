@@ -18,10 +18,14 @@
     "./source-evidence": {
       "types": "./src/server/github-source-evidence.d.mts",
       "import": "./src/server/github-source-evidence.mjs"
+    },
+    "./terminal-run": {
+      "types": "./src/server/github-terminal-run.d.mts",
+      "import": "./src/server/github-terminal-run.mjs"
     }
   },
   "scripts": {
-    "test": "node --test tests/github-run-identity.test.mjs tests/github-workflow-path-v2.test.mjs tests/github-run-facts-v2.test.mjs tests/bundle-consumption.test.mjs tests/github-source-evidence.test.mjs"
+    "test": "node --test tests/github-run-identity.test.mjs tests/github-workflow-path-v2.test.mjs tests/github-run-facts-v2.test.mjs tests/bundle-consumption.test.mjs tests/github-source-evidence.test.mjs tests/github-terminal-run.test.mjs"
   },
   "dependencies": {
     "lossless-json": "4.3.2"

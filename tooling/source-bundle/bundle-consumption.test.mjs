@@ -26,3 +26,15 @@ test('public source evidence export retains policy precision without internal im
  assert.equal(actual.facts.id,'9007199254740993');assert.ok(actual.json.includes('1e-400'));
  assert.equal(canonicalizeGitHubPolicyJson('{"z":9007199254740993,"a":1e-400}'),'{"a":1e-400,"z":9007199254740993}');
 });
+
+import { decodeGitHubTerminalRun, assertGitHubTerminalRun } from 'civicpulse-source-tooling-local/terminal-run';
+test('terminal public export preserves completed identities without internal imports',()=>{
+ const raw='{"id":9007199254740993,"run_attempt":1,"workflow_id":2,"repository":{"id":3},"head_repository":{"id":3},"path":".github/workflows/validate.yml@main","head_branch":"main","head_sha":"'+'a'.repeat(40)+'","event":"push","status":"completed","conclusion":"success"}';
+ const actual=decodeGitHubTerminalRun(raw);
+ assert.equal(actual.run_id,'9007199254740993');
+ const target={identity:{id:'9007199254740993',run_attempt:'1',workflow_id:'2',repository_id:'3',head_repository_id:'3'},event:'push'};
+ const policy={policy:'cp-workflow-path-v2',repository_full_name:'CivicPulse/fixture',workflow_path:'.github/workflows/validate.yml',source_sha:'a'.repeat(40),run_path_form:'relative-main'};
+ for(const endpoint of ['run','attempt'])assertGitHubTerminalRun(actual,target,policy,endpoint);
+ assert.equal(JSON.parse(JSON.stringify(actual)).run_id,'9007199254740993');
+ assert.throws(()=>decodeGitHubTerminalRun(raw.replace('"completed"','"in_progress"')),{code:'invalid_github_terminal_run'});
+});

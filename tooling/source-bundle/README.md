@@ -27,3 +27,15 @@ The minimal lock v3 installs only `lossless-json` exactly4.3.2 from `https://reg
 `node_modules` is permitted only as generated installation output AFTER successful preinstall verification. Do not relax the preinstall verifier for existing installations; use a fresh artifact for each verification/install. npm test executes only the five explicitly named bundled test files. No sibling checkout is needed. Public import resolution can use this private package's self-reference within the isolated directory; later Web integration must preserve the reviewed standalone install boundary rather than rely on ambient dependencies.
 
 Passing tests proves local structure/equality and artifact consistency only. Provider origin/compatibility/freshness, enrollment, observer/source admission, claims and deployment remain unimplemented or independently gated.
+
+The additive `civicpulse-source-tooling-local/terminal-run` export provides
+`decodeGitHubTerminalRun(rawJson)` and `assertGitHubTerminalRun(actual, target,
+pathPolicy, endpoint)` plus `TerminalRun`. The decoder projects exactly eleven
+string fields into the existing private terminal evidence shape, including five
+lossless numeric identities, unchanged raw_path and completed lifecycle/conclusion.
+It uses the same fixed raw parser limits; no provider authentication, freshness,
+source authorization or uploader permission follows. Comparator errors are
+`invalid_github_terminal_run` or `github_terminal_run_mismatch`, without raw body
+or parser cause. Existing run/path/source-evidence exports and dependency pin remain.
+Terminal output is safe to JSON.stringify; arbitrary full policy JSON still uses
+the separate lossless text assembly contract. Do not native-parse that policy.
