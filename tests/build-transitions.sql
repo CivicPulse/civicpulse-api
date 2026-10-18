@@ -397,6 +397,8 @@ reset session authorization;
 select pg_temp.assert((select snapshot_sha256=repeat('a',64) and publication_manifest=pg_temp.ctx('claimed_manifest') from civicpulse_delivery.build_jobs where job_id=(pg_temp.ctx('claim')->>'job_id')::uuid),'earlier evidence cannot be replaced');
 rollback to invalid_progress;
 
+-- DEPLOYMENT_SCENARIO
+
 savepoint ready_status;
 set session authorization cp_m21_runner;
 select pg_temp.reach_phase('ready');

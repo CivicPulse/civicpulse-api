@@ -96,8 +96,8 @@ select pg_temp.assert(public.publication_manifest()=pg_temp.ctx('prestate')||'{"
 select pg_temp.assert((select evidence->'target'=public.publication_manifest() and evidence->>'target_manifest_sha256'=encode(sha256(convert_to((evidence->'target')::text,'UTF8')),'hex') from civicpulse_delivery.maintenance_approvals where action='bootstrap'),'full target + internal encoding hash');
 select pg_temp.assert((select count(*)=1 from civicpulse_delivery.outbox where action='bootstrap'),'one bootstrap event');
 set session authorization cp_m21_reconciler;
-select pg_temp.denied($q$select civicpulse_delivery.open_source_observation('1:1',repeat('f',40),'deploy',null)$q$,'55000');
-select pg_temp.denied($q$select civicpulse_delivery.open_provider_observation('outcome',null,null,null)$q$,'55000');
+select pg_temp.denied($q$select civicpulse_delivery.open_source_observation('1:1',repeat('f',40),'deploy',null)$q$,'22023');
+select pg_temp.denied($q$select civicpulse_delivery.open_provider_observation('outcome',null,null,null)$q$,'22023');
 select pg_temp.denied($q$select civicpulse_delivery.open_source_observation('1:1',repeat('f',40),'claim',null)$q$,'55000');
 insert into m21_context values('baseline_challenge',civicpulse_delivery.open_provider_observation('baseline',null,null,'fixture-deployment'));
 select pg_temp.denied($q$select civicpulse_delivery.record_provider_observation((pg_temp.ctx('baseline_challenge')->>'challenge_id')::uuid,pg_temp.baseline()-'artifact')$q$,'22023');
@@ -176,7 +176,7 @@ set session authorization cp_m21_reconciler;
 select pg_temp.denied($q$select civicpulse_delivery.record_source_observation((pg_temp.ctx('source_challenge')->>'challenge_id')::uuid,pg_temp.source())$q$,'40001');
 reset session authorization;
 select pg_temp.assert((select count(*)=2 from civicpulse_delivery.observations),'rejections never add receipts');
-select pg_temp.assert(to_regprocedure('civicpulse_delivery.begin_deploy(uuid,uuid,bigint,uuid,bigint,text,text,text)') is null,'no deployment authority');
+select pg_temp.assert(not has_function_privilege('anon','civicpulse_delivery.begin_deploy(uuid,uuid,bigint,uuid,bigint,text,text,text)','execute') and not has_function_privilege('authenticated','civicpulse_delivery.begin_deploy(uuid,uuid,bigint,uuid,bigint,text,text,text)','execute'),'no browser deployment authority');
 -- Assert the complete new authority/helper catalog, not only selected wrappers.
 select pg_temp.assert(not exists(
   select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace
