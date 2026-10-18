@@ -23,10 +23,10 @@ export interface DeliveryConfig {
     required_check_context: 'civicpulse-validate'; required_check_app_id: Decimal;
   };
 }
-export interface SourceChallenge {
+export type SourceChallenge = {
   challenge_id: UUID; config_version: UUID; issued_at: string; expires_at: string;
-  run_id: string; source_sha: string; purpose: 'claim'; job_id: null; config: DeliveryConfig;
-}
+  run_id: string; source_sha: string; config: DeliveryConfig;
+} & ({ purpose: 'claim'; job_id: null } | { purpose: 'deploy'; job_id: UUID });
 export interface BaselineChallenge {
   challenge_id: UUID; config_version: UUID; purpose: 'baseline'; job_id: null;
   attempt_id: null; deployment_id: string; issued_at: string; expires_at: string;

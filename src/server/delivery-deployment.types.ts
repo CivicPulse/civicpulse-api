@@ -1,4 +1,17 @@
 /** Private SQL wire; no browser exports or provider acquisition/authentication. */
+import type { DeliveryState } from '../publication.types.js';
+import type { DeliveryConfig, ObservationReceipt } from './delivery-enrollment.types.js';
+export type ProviderTarget =
+  | { purpose: 'baseline'; job_id: null; attempt_id: null; deployment_id: string }
+  | { purpose: 'predeploy'; job_id: string; attempt_id: null; deployment_id: string }
+  | { purpose: 'outcome'; job_id: string; attempt_id: string; deployment_id: string | null }
+  | { purpose: 'terminal'; job_id: string; attempt_id: null; deployment_id: null }
+  | { purpose: 'terminal'; job_id: string; attempt_id: string; deployment_id: string | null };
+export type ProviderChallenge = ProviderTarget & {
+  challenge_id: string; config_version: string; issued_at: string; expires_at: string; config: DeliveryConfig;
+};
+/** Existence never implies eligibility; SQL retains classification privately. */
+export type ProviderReceipt = ObservationReceipt;
 export type TerminalConclusion = 'action_required' | 'cancelled' | 'failure' | 'neutral' | 'skipped' | 'stale' | 'startup_failure' | 'success' | 'timed_out';
 export interface TerminalRun {
   repository_id: string; head_repository_id: string; workflow_id: string;
@@ -26,10 +39,10 @@ export interface BeginDeployArguments {
 }
 /** Only the first successful call authorizes one invocation. Never retry upload. */
 export interface BeginDeployResult { attempt_id: string; authorized: true }
-export interface FinishDeployArguments {
-  p_attempt_id: string; p_fence: string; p_deployment_id: string | null;
-  p_outcome: 'unknown' | 'live' | 'failed'; p_observation: Record<string, never> | { observation_id: string };
-}
+export type FinishDeployArguments = { p_attempt_id: string; p_fence: string } & (
+  | { p_outcome: 'unknown'; p_deployment_id: string | null; p_observation: Record<string, never> }
+  | { p_outcome: 'live' | 'failed'; p_deployment_id: string; p_observation: { observation_id: string } }
+);
 export interface FinishDeployResult { state: 'deployment_unknown' | 'live' | 'failed'; live_generation: string | null; live_deployment_id: string | null }
 export interface ReconcileJobArguments { p_job_id: string; p_fence: string; p_observation: { observation_id: string } }
-export interface ReconcileJobResult { state: string; reclaimable: boolean; live_generation: string | null }
+export interface ReconcileJobResult { state: DeliveryState; reclaimable: boolean; live_generation: string | null }

@@ -61,14 +61,70 @@ cluster-wide test role names. It rehearses the populated known four-migration
 hosted baseline through the exact local migration inventory, preserving existing
 rows and warmed publication checks before connected scenarios.
 
-Developer checkpoint: `npm test` passed 66/66; `npm run test:db` and the
-sequential `node scripts/test-delivery-upgrade.mjs` both exited 0. No independent
-M2.3 implementation review is claimed.
+## Final local review coverage
 
-Before final M2.3 review, expand adversarial and concurrent begin/recovery coverage,
-including changed prior/canonical bytes, receipt identity revocation, rollback
-injection, terminal failure reconciliation and post-begin desired generation drift.
-The current positive/negative SQL tests are not a claim that the full accepted
-matrix has independent closure. Web-owned source/provider acquisition, artifact
-sidecars, real route/encoding checks and sole-uploader integration remain separate.
-Remote main and PR4 remain unchanged; no rollout authorization is inferred.
+The expanded connected suite covers:
+
+| Boundary | Actual SQL evidence |
+| --- | --- |
+| Begin atomicity | Late enrollment-update trigger failure restores intent, both receipts, job, fence and lock; repeated begin never authorizes twice |
+| Identity | Disabled/expired runner and receipt producer; actual dropped/recreated runner OID; expired/revoked/recreated reconciler denied saved replay |
+| Prior production | Changed baseline artifact/source/canonical remains audit-only; first markerless P and second admitted CMS P both exercised |
+| Drift | Publication before begin rejects without consumption; publication after begin remains desired while older pinned generation becomes verified live |
+| Finish/reconcile atomicity | Late acknowledgment-insert faults restore every authority/receipt/live field |
+| Unknown outcome | Lease expiry, operator pause/resume/reset attempts cannot release authority; fresh partial reconciliation repeatedly changes nothing |
+| Terminal evidence | Active attempt/unknown conclusion, duplicate numeric-equivalent page, unknown endpoint, status 0 reject; newer attempt and outsider/swapped prior remain audit-only |
+| Verified live | Changed admitted served-inventory digest cannot unlock; complete stored inventory only; second-job terminal failure preserves every prior live field and latches intervention |
+| Saved acknowledgment | Exact replay after receipt expiry is read-only; wrong fence/purpose and invalid current identity reject |
+| Prebegin recovery | Terminal evidence plus actual DB expiry required; no intent/live creation; existing intervention and spent identity retained |
+| Concurrency | Separate actual sessions: duplicate begin authorizes once; unexpired begin versus terminal cannot unlock; expired begin loses to proven recovery |
+
+`tests/deployment-control.sql` and `tests/deployment-outcomes.sql` use full private
+state snapshots for atomic rejection/nonconsumption assertions. Owner mutations
+are restricted to test clock advancement, negative corruption, registry lifecycle
+and fault injection. Approvals, source/provider receipts, claims, intents and live
+admission are created through actual role-checked functions, never owner-seeded.
+
+`tests/build-claims.sql`/`tests/build-transitions.sql` retain the independently
+reviewed objective-supersession and failure/intervention regressions.
+`scripts/test-deployment-concurrency.mjs` adds three independent disposable DB
+races; existing claim/dispatch concurrency remains intact. Run these harnesses
+sequentially: cluster-wide disposable role names are intentionally shared.
+
+Developer validation for this review candidate:
+
+- `npm test`: 66 passed, zero failures/skips.
+- `npm run test:db`: exit 0, including all connected scenarios and five
+  concurrency lanes (claim, dispatch, three deployment races).
+- `node scripts/test-delivery-upgrade.mjs`: exit 0, run after SQL completion;
+  populated four-migration baseline preservation and warmed publish retained.
+- `node scripts/test-publication-fixture.mjs`: separate sequential M1 preservation
+  check exited 0: A7 → B4, generation 7 → 10; withdrawal/pagination/empty-layer/
+  idempotency/read-only checks passed.
+- `git diff --check`: clean.
+
+Independent M2.3 implementation review is still required. No external grants,
+real login, credentials, provider calls, hosted migrations or remote pushes were
+performed. M2.3 private function signatures/results are in the linked server-only
+types; public v1/M2a remain unchanged.
+
+### Existing status discrepancy routed to lead
+
+The M2.2 `cms_publication_status` function returns `last_error` as text/null, while
+`src/publication.types.ts` declares `{code,occurred_at}|null`. This pre-existing
+mismatch was reported rather than silently changing the frozen browser shape.
+The lead's disposition is required before claiming complete status/type parity.
+
+### Adapter-only limits
+
+SQL validates projected schema, identities, context, receipt freshness and state
+transitions. It cannot authenticate caller-supplied GitHub/Cloudflare facts or
+prove hashes correspond to acquired bytes. The authorized adapter must acquire
+fixed endpoints, verify both run and attempt, full source/config evidence, stage
+terminal timing and bracketing, exact deployment correlation, and complete retained
+artifact/route/encoding/marker checks at all three origins. Failure evidence must
+verify immutable prior P bytes even though candidate marker/artifact fields are
+null. The sole uploader must honor one invocation and external-process fencing;
+a database fence cannot stop a previously authorized process from uploading again.
+These are not replaced by constructed SQL fixtures. No hosted/production approval
+or source-adapter implementation proof follows from this local review candidate.

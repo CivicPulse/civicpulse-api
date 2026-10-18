@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { readFileSync, readdirSync } from 'node:fs';
 import { readWebData } from './import-web.mjs';
 import { testDispatchConcurrency } from './test-dispatch-concurrency.mjs';
+import { testDeploymentConcurrency } from './test-deployment-concurrency.mjs';
 import { testBuildConcurrency } from './test-build-concurrency.mjs';
 const container = process.env.CIVICPULSE_TEST_CONTAINER || 'civicpulse-api-db-test';
 function command(args, input) {
@@ -54,6 +55,7 @@ try {
   console.log(output.slice(-4000));
   if (!process.argv.includes('--web-data')) await testBuildConcurrency(command, container, database);
   await testDispatchConcurrency(command, container, database);
+  if (!process.argv.includes('--web-data')) await testDeploymentConcurrency(command, container);
 } finally {
   command(['exec',container,'dropdb','-U','postgres',database]);
 }
