@@ -202,3 +202,70 @@ Before any suite, assert PG170011 and loaded PostGIS3.3.7 in a random postgres-o
 database, record full dependencies, extension placement, locale and preloads. Fail
 closed on startup/version/permission/ownership drift. Full role/geometry/upgrade
 lanes remain sequential and separately evidenced; no hosted/pooler equivalence.
+
+
+## Syntax correction proposal after failed create (HELD)
+
+The f3c9531 attempt failed during create with `unknown mount option "uid=100"`.
+Exact-name reconciliation confirmed absence; no image code/SQL ran. This was
+mount-parser compatibility, not a PostgreSQL or migration failure.
+
+Installed local client/engine: Podman5.8.7, API5.8.7, commit
+`c593b672bf3db1173aebea565ebf1a724ea196dc`, Linux/amd64, rootless=true,
+ServiceIsRemote=false, configured connections empty. Installed
+`/usr/share/man/man1/podman-create.1.gz` documents `--mount type=tmpfs`
+`U`/`chown` as setting tmpfs uid/gid from the container user, non-recursively;
+`tmpfs-size`, `tmpfs-mode` and `notmpcopyup` are documented too. See also
+[official create documentation](https://docs.podman.io/en/latest/markdown/podman-create.1.html).
+No create/run syntax experiments were used.
+
+Replace only the three mount arguments in the preceding full argv with:
+
+```text
+--mount type=tmpfs,destination=/var/lib/postgresql/data,tmpfs-size=1073741824,tmpfs-mode=0700,U=true,notmpcopyup
+--mount type=tmpfs,destination=/var/run/postgresql,tmpfs-size=16777216,tmpfs-mode=03775,U=true,notmpcopyup
+--mount type=tmpfs,destination=/tmp,tmpfs-size=67108864,tmpfs-mode=1777,notmpcopyup
+```
+
+This explicitly requests mount-root ownership100:101 from unchanged `--user100:101`
+for PGDATA/socket; `/tmp` remains the default root-owned sticky scratch mount.
+It does not recursively chown anything or touch a host bind/persistent volume.
+`notmpcopyup` explicitly selects empty ephemeral mounts: the old --tmpfs spelling
+must not accidentally be replaced by --mount's default image-directory copy-up.
+No config path is shadowed. Require resolved rw/nodev/nosuid/noexec on all three
+mounts in created config; stop if the engine defaults differ, rather than silently
+accepting executable or device-capable scratch. All other reviewed argv, bounds,
+entrypoint/init/preloads/managed-role demotion and cleanup remain unchanged.
+
+### Configured versus effective ownership admission
+
+Before start, inspect the exact created container and OCI mount specification:
+require three exact tmpfs destinations/byte sizes/modes, uid100/gid101 for the two
+owned mounts, no copy-up, rw/nodev/nosuid/noexec, plus all earlier image/user/network/
+resource/security invariants. This checks configured intent ONLY: an unstarted
+tmpfs is not yet mounted, and container inspect is not an effective stat result.
+If the supported inspection output cannot expose resolved ownership/options,
+report that gap before start rather than claiming the check passed.
+
+After the separately authorized one start, permit ONLY these explicit non-mutating
+in-container diagnostic commands (same default OS user100:101, no user override):
+
+```text
+podman exec EXACT_ID stat -c '%u:%g %a %n' /var/lib/postgresql/data /var/run/postgresql /tmp
+podman exec EXACT_ID cat /proc/1/status /proc/1/cmdline /proc/1/mountinfo
+```
+
+These run only while the container is running, within the120s admission deadline.
+They do not replace or wrap the stock entrypoint, perform chown/chmod, or run test
+suites. Require effective PGDATA100:101 mode700, socket100:101 mode3775, scratch
+0:0 mode1777, and tmpfs mountinfo rw/nodev/nosuid/noexec for all three. Record
+observations once early and again after final readiness to catch init changes.
+Assert PID1 Uid/Gid100/101, no effective capabilities and NoNewPrivs1. If init exits
+before diagnostics, capture bounded logs/exit state and stop; do not restart.
+
+Final PID/ready socket checks and PG/PostGIS/role admission remain as previously
+reviewed, but SQL admission waits for effective filesystem checks to pass. Neither
+configured nor effective mount admission constitutes managed role or version proof.
+No adapted suite is authorized by this syntax proposal. Any discrepancy halts for
+read-only diagnosis and exact owned-container cleanup. No root/mode widening,
+privilege fallback, provider call or hosted operation.
