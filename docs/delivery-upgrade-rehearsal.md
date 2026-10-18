@@ -1,9 +1,24 @@
 # M2 preparation: hosted baseline → delivery foundations
 
-2026-10-17. Local rehearsal only; no hosted apply, login provisioning or source/
-job/deploy authority. M1 transport handoff is [separate](publication-fixture-handoff.md).
-The lead is coordinating the integrated M2.1 contract, including prospective
-bootstrap generation precision. Do not implement an alternate approval path.
+2026-10-17. Local rehearsal only; no hosted apply, login provisioning, job/deploy
+authority. M1 transport handoff is [separate](publication-fixture-handoff.md).
+The original foundation evidence below is retained. The subsequent M2.1 extension
+implements the accepted prospective-bootstrap correction and checked local
+source/baseline receipts; see [the connected handoff](enrollment-source-handoff.md).
+No alternate approval path is implemented.
+
+## M2.1 extension
+
+The current script additionally applies
+`20261018010946_delivery_enrollment_source.sql` after the four foundation SQLs.
+It prints the exact SHA256 of every applied addition at runtime. After unchanged
+row/warmed-call checks, it runs `tests/enrollment-source.sql` in a rolled-back
+transaction. That test resets only this random disposable DB's synthetic fixture
+rows in dependency order; it does not read/delete hosted QA data. Config,
+bootstrap approval, baseline observation/consumption and source receipts all use
+actual guarded functions/role identities, never owner-seeded authority receipts.
+This extension still excludes future job/deploy/live writers and actual provider
+acquisition; Web adapter integration and independent review are separate evidence.
 
 ## Reproduced upgrade boundary
 
