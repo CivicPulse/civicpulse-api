@@ -504,3 +504,66 @@ values100/101 and all previous caps/NNP/readonly/key/socket/shm checks intact.
 Original image init arguments must match pinned metadata including allow-group-access.
 No chmod, alternate initargs or fallback0700 acceptance after init. This precision
 awaits exact hash review/lead instruction before a further bounded admission run.
+
+## Explicit private IPC and normalized tmpfs intent amendment (HELD)
+
+v6 stopped before start: HostConfig.IpcMode was `shareable` while the gate required
+`private`. The exact container and synthetic secret were removed with absence
+verified. No image code or SQL ran. Evidence is retained at
+`/tmp/civicpulse-runtime-admission-v6-4it8ofhk/created.json`.
+
+Add exactly ONE argument to the complete preceding argv: `--ipc=private`.
+Installed Podman5.8.7 `/usr/share/man/man1/podman-create.1.gz`, section --ipc,
+explicitly supports private and distinguishes shareable (a private namespace that
+may be shared). Require exact `HostConfig.IpcMode == "private"`; do not accept
+shareable, host, container/ns joins or none. No other argv change is proposed.
+
+The same installed manual's type=tmpfs options define ro/readonly default false.
+Created HostConfig.Tmpfs may omit a literal rw token for the first three mounts;
+v6 shows this normalization. The precise configured-intent gate therefore checks
+all four exact paths/sizes/modes and noexec/nodev/nosuid, U on the two owned mounts,
+reviewed original argv with no ro/readonly=true, and absence of ro in normalized
+options. If an explicit per-mount RW boolean is present, require true; any false
+or contradictory read-only field fails. Missing literal rw alone is not a failure
+when these documented-default intent checks pass. This is NOT effective write
+proof. HostConfig.ReadonlyRootfs must remain true and read-only-tmpfs=false stays.
+
+After the separately authorized single start, require effective mountinfo rw and
+no ro for EACH of the four tmpfs mounts, with every existing size/mode/ownership/
+noexec/nodev/nosuid check. Root must remain ro, IPC private, no host binds/shared
+paths. Final PGDATA0750 and regular PG_VERSION0640/0600, PID1 UID100/GID101/
+Groups101, key/socket/shm/caps/NNP checks remain mandatory before SQL. No stale
+0700 effective gate or fallback is permitted. This amendment awaits exact hash
+review and lead instruction; no new create/start is authorized by this document.
+
+### Retained-readback audit before freeze
+
+Cross-checked v5/v6 created JSON and v5 stat/proc/mountinfo; no new runtime used.
+The sole new argv delta is --ipc=private. Exact created fields remain image ID,
+label/state/user, readonly root/networknone, Memory2147483648/NanoCpus2000000000/
+PidsLimit256/ShmSize134217728, empty binds/ports/Mounts, no CapAdd, recorded
+CapDrop set and no-new-privileges, original entrypoint/Cmd/init args. PID/UTS/
+cgroup modes were private; IPC shareable is the explicit rejected delta.
+Read-only-tmpfs is checked in retained CreateCommand (no separate normalized
+ReadonlyTmpfs field exists). Secret metadata exposes Name/ID/UID100/GID101 and
+Mode256 decimal (=0400); fixed target is checked in exact CreateCommand, not an
+invented normalized target field. Check one secret and no extra mount arguments.
+
+Mount mode strings accept their octal spelling (0700/700, 03775/3775); sizes are
+bytes in created Tmpfs, KiB in effective mountinfo (1048576k/16384k/65536k/131072k).
+U is configured intent; effective stat supplies container-visible owner IDs.
+Kernel mountinfo uid/gid may be host-mapped and are not substituted for stat.
+PGDATA mountinfo retains original mode700 even after init changes directory stat
+to750: require configured mount mode700 AND effective directory750, not equality.
+Socket aliases must have equal device/inode. Key remains regular100:101/400/64.
+Effective per-mount flags are the mountinfo options BEFORE the separator: root
+and key must be ro even if backing superblock options after separator contain rw.
+Four tmpfs per-mount flags must be rw/noexec/nodev/nosuid. The one engine-managed
+fixed secret file is the already-approved exception to no caller host binds;
+no whole configuration-directory overlay or extra shared data path is allowed.
+
+Retained process facts match all four UID100/GID101 values, Groups101 only,
+zero CapEff and NoNewPrivs1. Repeat these, final PID command/readiness and all
+filesystem gates on the future attempt. PG_VERSION metadata was NOT captured
+in v5: its fixed regular100:101/0640-or0600 check remains mandatory and unproven.
+No version, loaded library or managed-role admission is inferred from this audit.
