@@ -269,3 +269,47 @@ configured nor effective mount admission constitutes managed role or version pro
 No adapted suite is authorized by this syntax proposal. Any discrepancy halts for
 read-only diagnosis and exact owned-container cleanup. No root/mode widening,
 privilege fallback, provider call or hosted operation.
+
+
+## Explicit noexec and ownership-intent correction (HELD)
+
+Supersedes only the preceding replacement mount argv and created ownership gate.
+The b7a7667 attempt created a stopped container but inspect lacked noexec on all
+three mounts. It was removed without start/exec. This is a prestart configuration
+failure, not SQL/runtime failure. Evidence:
+`/tmp/civicpulse-runtime-admission-v2-zeaxxepv/inspect.json` and `gate.json`.
+
+Exact replacement arguments now request noexec explicitly:
+
+```text
+--mount type=tmpfs,destination=/var/lib/postgresql/data,tmpfs-size=1073741824,tmpfs-mode=0700,U=true,notmpcopyup,noexec
+--mount type=tmpfs,destination=/var/run/postgresql,tmpfs-size=16777216,tmpfs-mode=03775,U=true,notmpcopyup,noexec
+--mount type=tmpfs,destination=/tmp,tmpfs-size=67108864,tmpfs-mode=1777,notmpcopyup,noexec
+```
+
+Installed5.8.7 create manual documents tmpfs U/chown, size, mode, copy-up and
+noexec filesystem semantics. Its tmpfs default wording did not describe observed
+--mount resolution, so no default-exec inference is used. The upstream
+[shared mount-option parser](https://github.com/containers/podman/blob/main/pkg/specgenutil/volumes.go)
+explicitly accepts bare noexec for memory mounts; this corroborates spelling,
+not exact installed binary behavior (installed commit source fetch unavailable).
+No guessed create/run trial was performed. The approved future create must itself
+prove resolved noexec, nodev, nosuid, sizes and modes before start; unsupported
+syntax or missing flags means stop and reconcile, never substitute exec.
+
+Created-state checks require Config.User100:101 plus U on PGDATA/socket as
+**configured ownership intent**. Numeric uid/gid and OCIConfigPath may not exist
+before mounting; null unstarted OCIConfigPath is not a failure or effective-owner
+proof. Require exact image/label/created state, no binds/ports, readonly root,
+nonroot user, cap-drop/NNP/resource bounds, unchanged entrypoint/init/preloads,
+and three exact tmpfs configured paths/sizes/modes and noexec/nosuid/nodev flags.
+Retain the exact original argv proving notmpcopyup even if inspect normalizes it.
+No start if these observable configured invariants fail.
+
+After the separately gated single start, the already specified stat/proc/mountinfo
+diagnostics are mandatory **before SQL**. Require effective PGDATA100:101/700,
+socket100:101/3775, scratch0:0/1777; tmpfs rw/noexec/nosuid/nodev; PID1uid100/gid101,
+zero effective capabilities and NoNewPrivs1. Record early and final-ready values.
+All readiness/timeouts/role-demotion/admission/cleanup restrictions remain intact.
+No root fallback, widened modes, init changes or additional diagnostic command.
+Runtime execution remains held for exact revision review and lead instruction.
