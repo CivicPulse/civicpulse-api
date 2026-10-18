@@ -458,3 +458,49 @@ bytes. Retain actual flags/size rather than infer them from --shm-size. All exis
 key/socket/PID1/capability/NNP/readiness gates precede SQL and remain mandatory.
 No retry on failure. This amendment needs exact Security/lead approval before
 another secret/create/start; full adapted suites and hosted actions remain excluded.
+
+## Original image PGDATA group-access disposition proposal (HELD)
+
+v5 started with all configured gates passed, then effective PGDATA stat returned
+100:101 mode0750, contrary to the prior effective0700 assertion. The stage halted
+before SQL; exact container then synthetic secret were removed/absence verified.
+No chmod or init-argument change occurred. This is an effective permission-contract
+mismatch; it is not evidence of a migration/version failure.
+
+Pinned image config c4be962 (amd64 manifest e85bc10) declares unchanged
+`POSTGRES_INITDB_ARGS=--allow-group-access --locale-provider=icu --encoding=UTF-8 --icu-locale=en_US.UTF-8`.
+Retained created inspect confirms these arguments; initdb log records successful
+initialization. Group access is explicitly requested by the original image.
+Propose keeping tmpfs creation mode0700 but accepting effective PGDATA **0750**
+from original init, owner100/group101, no group write or access for others.
+Do NOT remove allow-group-access, chmod after init, or expand another path/mode.
+
+Already retained v5 `/proc/1/status`: all UIDs100, all GIDs101, Groups exactly101,
+CapEff0000000000000000, NoNewPrivs1. Copied passwd establishes postgres100:101.
+These prove the observed process's group set; no `/etc/group` inventory was retained,
+so do not claim complete image group membership or absence of another group101
+principal. All processes still run in the isolated single-container/user boundary.
+No broad supplementary group is requested. If full static group membership is
+required before acceptance, obtain separate read-only metadata evidence, not a
+new runtime attempt or an invented membership assertion.
+
+Only effective-PGDATA acceptance changes. Key100:101/0400/64bytes, socket100:101/
+3775 with alias equality, scratch/shm0:0/1777, bounded128MiB shm, readonly root,
+noexec/nodev/nosuid, caps/NNP/network/init/preloads remain mandatory and unchanged.
+Retained v5 mountinfo separately records canonical socket/shm rw/noexec/nosuid/nodev,
+shm size131072k; these are v5 observations only, not future-run admission. Future
+run must repeat all mandatory checks before SQL. No runtime approval implied.
+
+### Exact effective-mode admission precision
+
+Configured PGDATA tmpfs0700 is initial intent; after completed original init accept
+ONLY effective directory100:101/0750. Before SQL additionally stat the fixed
+regular cluster file `/var/lib/postgresql/data/PG_VERSION` without reading it:
+require regular file100:101 and mode0640 or0600 (no executable/groupwrite/other
+bits). Add this fixed path to metadata-only stat diagnostics. Record PGDATA
+mountinfo and require private container IPC/mount namespace, no host/shared IPC,
+no host binds/shared data paths. PID1 Groups must be exactly101, with all UID/GID
+values100/101 and all previous caps/NNP/readonly/key/socket/shm checks intact.
+Original image init arguments must match pinned metadata including allow-group-access.
+No chmod, alternate initargs or fallback0700 acceptance after init. This precision
+awaits exact hash review/lead instruction before a further bounded admission run.
